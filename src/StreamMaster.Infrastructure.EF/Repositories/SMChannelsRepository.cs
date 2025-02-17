@@ -21,6 +21,7 @@ using StreamMaster.EPG;
 using StreamMaster.Infrastructure.EF.PGSQL;
 using StreamMaster.SchedulesDirect.Domain.Interfaces;
 using StreamMaster.Streams.Domain.Interfaces;
+
 namespace StreamMaster.Infrastructure.EF.Repositories;
 
 public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgMatcher epgMatcher, ILogoService logoService, ICacheManager cacheManager, IImageDownloadService imageDownloadService, IImageDownloadQueue imageDownloadQueue, IServiceProvider serviceProvider, IRepositoryWrapper repository, IRepositoryContext repositoryContext, IMapper mapper, IOptionsMonitor<Setting> settings, IOptionsMonitor<CommandProfileDict> intProfileSettings, ISchedulesDirectDataService schedulesDirectDataService)
@@ -41,6 +42,7 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
         IQueryable<SMChannel> results = await GetPagedSMChannelsQueryableAsync(parameters);
         return await AutoSetEPGs(results, false, cancellationToken).ConfigureAwait(false);
     }
+
     public async Task<List<FieldData>> AutoSetEPGs(IQueryable<SMChannel> smChannels, bool skipSave, CancellationToken cancellationToken)
     {
         // Apply filtering in the database (deferred execution until ToListAsync is called)
@@ -251,6 +253,7 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
                 SMStream = link.SMStream!,
                 SMStreamId = link.SMStreamId,
                 Rank = link.Rank,
+                SMStreamM3UFileId = link.SMStreamM3UFileId
             };
 
             repository.SMChannelStreamLink.Create(newLink);
@@ -431,7 +434,7 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
                 return query;
             }
 
-            // Filter for "inSG" 
+            // Filter for "inSG"
             DataTableFilterMetaData? inSGFilter = filters.FirstOrDefault(a => a.MatchMode == "inSG");
             if (inSGFilter?.Value is JsonElement inSGJsonElement)
             {
@@ -810,9 +813,6 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
 
         string name = GetName(smStream);
 
-        //LogoInfo  nl = new(smStream);
-
-        //string logo = logoService.GetLogoUrl2(smStream.ChannelLogo, ftype);
         SMChannel smChannel = new()
         {
             BaseStreamID = smStream.Id,
@@ -823,8 +823,7 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
             EPGId = smStream.EPGID,
             Group = smStream.Group,
             IsSystem = smStream.IsSystem,
-            Logo = smStream.Logo,// nl.SMLogoUrl,
-            M3UFileId = smStream.M3UFileId,
+            Logo = smStream.Logo,
             Name = name,
             StationId = smStream.StationId,
             TVGName = smStream.TVGName
@@ -858,8 +857,6 @@ public class SMChannelsRepository(ILogger<SMChannelsRepository> intLogger, IEpgM
 
                 // Call the PostgreSQL function for the current batch
                 RepositoryContext.ExecuteSqlRaw(sql);
-
-
             }
 
             return;

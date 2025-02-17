@@ -33,6 +33,8 @@ public sealed class SwitchToNextStreamService(
         using IServiceScope scope = serviceProvider.CreateScope();
         channelStatus.PlayedIntro = false;
 
+        SMChannelStreamLink? OldsmStream = channelStatus.SMChannel.CurrentRank > -1 ? channelStatus.SMChannel.SMStreams.FirstOrDefault(channelStreamLink => channelStreamLink.Rank == channelStatus.SMChannel.CurrentRank) : null;
+
         SMStreamDto? smStream = await ResolveSMStreamAsync(scope, channelStatus, overrideSMStreamId).ConfigureAwait(false);
         if (smStream == null)
         {
@@ -40,17 +42,12 @@ public sealed class SwitchToNextStreamService(
             return false;
         }
 
-        Domain.Metrics.StreamConnectionMetricManager? metricData = streamConnectionService.Get(smStream.Id);
-        if (metricData is not null)
-        {
-            int currentRetry = metricData.GetRetryCount();
+        int? smStreamM3UfileId = OldsmStream?.SMStreamM3UFileId;
+        int m3UfileId = smStream.M3UFileId;
 
-            if (currentRetry >= settings.StreamRetryLimit && metricData.MetricData.LastConnectionAttemptTime is not null && metricData.MetricData.LastConnectionAttemptTime.Value.AddHours(settings.StreamRetryHours) > DateTime.UtcNow)
-            {
-                logger.LogInformation("Stream {Name} retry limit ({currentRetry}) reached.", smStream.Name, currentRetry);
-                return false;
-            }
-            metricData.SetLastConnectionAttemptTime();
+        if (!(smStreamM3UfileId.GetValueOrDefault() == m3UfileId & smStreamM3UfileId.HasValue) && streamLimitsService.IsLimited(smStream))
+        {
+            return HandleStreamLimits(channelStatus, settings);
         }
 
         return streamLimitsService.IsLimited(smStream)

@@ -1,4 +1,5 @@
 ﻿using StreamMaster.Application.Services;
+using System.Linq.Expressions;
 
 namespace StreamMaster.Application.StreamGroupSMChannelLinks.Commands;
 
@@ -24,7 +25,8 @@ internal class MoveSMChannelsToStreamGroupRequestHandler(IBackgroundTaskQueue ta
             return APIResponse.ErrorWithMessage("SG not found");
         }
 
-        List<int> channelsIds = await Repository.SMChannel.GetQuery().Where(a => a.M3UFileId == request.M3UFile.Id).Select(a => a.Id).ToListAsync(cancellationToken: cancellationToken);
+        List<string> streamIds = await Repository.SMStream.GetQuery().Where(stream => stream.M3UFileId == request.M3UFile.Id).Select(stream => stream.Id).ToListAsync(cancellationToken);
+        List<int> channelsIds = await Repository.SMChannel.GetQuery().Where(channel => streamIds.Contains(channel.BaseStreamID)).Select(channel => channel.Id).ToListAsync(cancellationToken: cancellationToken);
         if (channelsIds.Count == 0)
         {
             return APIResponse.Success;

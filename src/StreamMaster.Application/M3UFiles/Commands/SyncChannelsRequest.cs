@@ -1,4 +1,6 @@
 ﻿using StreamMaster.Application.SMChannels.Commands;
+using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace StreamMaster.Application.M3UFiles.Commands;
 
@@ -37,7 +39,9 @@ internal class SyncChannelsRequestHandler(ILogger<SyncChannelsRequest> logger, I
             }
 
             IQueryable<SMStream> streams = Repository.SMStream.GetQuery().Where(a => a.M3UFileId == request.M3UFileId);
-            IQueryable<SMChannel> existingSMChannels = Repository.SMChannel.GetQuery().Where(a => a.M3UFileId == request.M3UFileId);
+            List<string> ids = await streams.Select(a => a.Id).ToListAsync(cancellationToken);
+
+            IQueryable<SMChannel> existingSMChannels = Repository.SMChannel.GetQuery().Where(a => ids.Contains(a.BaseStreamID));
 
             // Get the stream IDs as strings
             List<string> streamIds = await streams.Select(s => s.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -64,7 +68,10 @@ internal class SyncChannelsRequestHandler(ILogger<SyncChannelsRequest> logger, I
 
             if (streamsToBeDeleted.Count != 0)
             {
-                List<int> smChannelIds = await Repository.SMChannel.GetQuery().Where(a => a.M3UFileId == request.M3UFileId && a.BaseStreamID != null && streamsToBeDeleted.Contains(a.BaseStreamID)).Select(a => a.Id).ToListAsync(cancellationToken: cancellationToken);
+                List<int> smChannelIds = await Repository.SMChannel.GetQuery()
+                    .Where(channel => channel.BaseStreamID != default && streamsToBeDeleted.Contains(channel.BaseStreamID))
+                    .Select(channel => channel.Id)
+                    .ToListAsync(cancellationToken: cancellationToken);
 
                 _ = await sender.Send(new DeleteSMChannelsRequest(smChannelIds), cancellationToken).ConfigureAwait(false);
             }

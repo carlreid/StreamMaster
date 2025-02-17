@@ -15,7 +15,7 @@ namespace StreamMaster.Domain.Models
     /// <summary>
     /// Represents a channel in the system.
     /// </summary>
-    public class SMChannel : ISMChannel
+    public class SMChannel
     {
         /// <summary>
         /// Gets or sets the unique identifier for the SMChannel.
@@ -43,11 +43,6 @@ namespace StreamMaster.Domain.Models
         /// Gets or sets the base stream ID for the channel.
         /// </summary>
         public string BaseStreamID { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the ID of the M3U file associated with this channel.
-        /// </summary>
-        public int M3UFileId { get; set; }
 
         /// <summary>
         /// Gets or sets the channel number.

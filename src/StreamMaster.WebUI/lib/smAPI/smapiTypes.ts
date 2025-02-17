@@ -323,7 +323,6 @@ export interface SMChannelDto
 	IsHidden: boolean;
 	IsSystem: boolean;
 	Logo: string;
-	M3UFileId: number;
 	Name: string;
 	Rank: number;
 	SMChannelDtos: SMChannelDto[];
