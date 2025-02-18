@@ -1,23 +1,5 @@
 BEGIN;
 
--- Check if migration has already been performed
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM "SystemKeyValues" WHERE "Key" = 'didIDMigration') THEN
-        RAISE NOTICE 'Migration already completed.';
-        RETURN;
-    END IF;
-END $$;
-
--- Create temporary tables for streams and m3ufiles data
-CREATE TEMP TABLE temp_SMStreams AS
-SELECT "Id", "Url", "CUID", "ChannelId", "EPGID", "TVGName", "Name", "M3UFileId"
-FROM "SMStreams";
-
-CREATE TEMP TABLE temp_M3UFiles AS
-SELECT "Id", COALESCE("M3UKey", 0) AS "M3UKey"
-FROM "M3UFiles";
-
 -- Function to generate MD5 hash
 CREATE OR REPLACE FUNCTION generate_md5(key TEXT, M3UFileId INT)
 RETURNS TEXT AS $$
@@ -64,52 +46,94 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a temporary table for batch processing
-CREATE TEMP TABLE temp_batch_update (old_id TEXT, new_id TEXT, m3ufileid INT);
+DO $$
+DECLARE
+    duplicate_count INTEGER;
+BEGIN
+    -- Only proceed if migration hasn't been done
+    IF NOT EXISTS (SELECT 1 FROM "SystemKeyValues" WHERE "Key" = 'didIDMigration') THEN
+        -- Create temporary tables for streams and m3ufiles data
+        CREATE TEMP TABLE temp_SMStreams AS
+        SELECT "Id", "Url", "CUID", "ChannelId", "EPGID", "TVGName", "Name", "M3UFileId"
+        FROM "SMStreams";
 
--- Insert new IDs into the batch update table
-INSERT INTO temp_batch_update (old_id, new_id, m3ufileid)
-SELECT s."Id", generate_m3u_key_value(f."M3UKey", s."M3UFileId", s."Url", s."CUID", 
-                                      s."ChannelId", s."EPGID", s."TVGName", s."Name"), s."M3UFileId"
-FROM temp_SMStreams s
-LEFT JOIN temp_M3UFiles f ON s."M3UFileId" = f."Id"
-WHERE s."M3UFileId" IS NOT NULL AND s."M3UFileId" >= 0;
+        CREATE TEMP TABLE temp_M3UFiles AS
+        SELECT "Id", COALESCE("M3UKey", 0) AS "M3UKey"
+        FROM "M3UFiles";
 
--- Update SMStreams with new IDs
-INSERT INTO "SMStreams" ("Id", "ClientUserAgent", "FilePosition", "IsHidden", 
-                         "IsUserCreated", "M3UFileId", "ChannelNumber", 
-                         "M3UFileName", "Group", "EPGID", "Logo", "Name", 
-                         "Url", "StationId", "IsSystem", "CUID", "SMStreamType", 
-                         "NeedsDelete", "ChannelName", "ChannelId", 
-                         "CommandProfileName", "TVGName", "ExtInf")
-SELECT t.new_id, s."ClientUserAgent", s."FilePosition", s."IsHidden", 
-       s."IsUserCreated", t.m3ufileid, s."ChannelNumber", s."M3UFileName", 
-       s."Group", s."EPGID", s."Logo", s."Name", s."Url", s."StationId", 
-       s."IsSystem", s."CUID", s."SMStreamType", s."NeedsDelete", s."ChannelName", 
-       s."ChannelId", s."CommandProfileName", s."TVGName", s."ExtInf"
-FROM temp_batch_update t
-INNER JOIN "SMStreams" s ON t.old_id = s."Id";
+        -- Create a temporary table for batch processing
+        CREATE TEMP TABLE temp_batch_update (old_id TEXT, new_id TEXT, m3ufileid INT);
 
--- Update SMChannelStreamLinks with new IDs
-INSERT INTO "SMChannelStreamLinks" ("SMStreamId", "SMChannelId", "Rank")
-SELECT t.new_id, l."SMChannelId", l."Rank"
-FROM temp_batch_update t
-INNER JOIN "SMChannelStreamLinks" l ON t.old_id = l."SMStreamId";
+        -- Insert new IDs into the batch update table
+        INSERT INTO temp_batch_update (old_id, new_id, m3ufileid)
+        SELECT s."Id", generate_m3u_key_value(f."M3UKey", s."M3UFileId", s."Url", s."CUID", 
+                                              s."ChannelId", s."EPGID", s."TVGName", s."Name"), s."M3UFileId"
+        FROM temp_SMStreams s
+        LEFT JOIN temp_M3UFiles f ON s."M3UFileId" = f."Id"
+        WHERE s."M3UFileId" IS NOT NULL AND s."M3UFileId" >= 0;
 
--- Delete old SMChannelStreamLinks
-DELETE FROM "SMChannelStreamLinks"
-WHERE "SMStreamId" IN (SELECT old_id FROM temp_batch_update);
+        -- Update SMStreams with new IDs
+        INSERT INTO "SMStreams" ("Id", "ClientUserAgent", "FilePosition", "IsHidden", 
+                                 "IsUserCreated", "M3UFileId", "ChannelNumber", 
+                                 "M3UFileName", "Group", "EPGID", "Logo", "Name", 
+                                 "Url", "StationId", "IsSystem", "CUID", "SMStreamType", 
+                                 "NeedsDelete", "ChannelName", "ChannelId", 
+                                 "CommandProfileName", "TVGName", "ExtInf")
+        SELECT t.new_id, s."ClientUserAgent", s."FilePosition", s."IsHidden", 
+               s."IsUserCreated", t.m3ufileid, s."ChannelNumber", s."M3UFileName", 
+               s."Group", s."EPGID", s."Logo", s."Name", s."Url", s."StationId", 
+               s."IsSystem", s."CUID", s."SMStreamType", s."NeedsDelete", s."ChannelName", 
+               s."ChannelId", s."CommandProfileName", s."TVGName", s."ExtInf"
+        FROM temp_batch_update t
+        INNER JOIN "SMStreams" s ON t.old_id = s."Id";
 
--- Delete old SMStreams
-DELETE FROM "SMStreams"
-WHERE "Id" IN (SELECT old_id FROM temp_batch_update);
+        -- Update SMChannelStreamLinks with new IDs
+        INSERT INTO "SMChannelStreamLinks" ("SMStreamId", "SMChannelId", "Rank")
+        SELECT t.new_id, l."SMChannelId", l."Rank"
+        FROM temp_batch_update t
+        INNER JOIN "SMChannelStreamLinks" l ON t.old_id = l."SMStreamId";
 
--- Drop temporary tables
-DROP TABLE temp_batch_update;
-DROP TABLE temp_SMStreams;
-DROP TABLE temp_M3UFiles;
+        -- Delete old SMChannelStreamLinks
+        DELETE FROM "SMChannelStreamLinks"
+        WHERE "SMStreamId" IN (SELECT old_id FROM temp_batch_update);
 
--- Add the didIDMigration entry to SystemKeyValues
-INSERT INTO "SystemKeyValues" ("Key", "Value") VALUES ('didIDMigration', 'true');
+        -- Delete old SMStreams
+        DELETE FROM "SMStreams"
+        WHERE "Id" IN (SELECT old_id FROM temp_batch_update);
+
+        -- Drop temporary tables
+        DROP TABLE temp_batch_update;
+        DROP TABLE temp_SMStreams;
+        DROP TABLE temp_M3UFiles;
+
+        -- Add the didIDMigration entry to SystemKeyValues
+        INSERT INTO "SystemKeyValues" ("Key", "Value") VALUES ('didIDMigration', 'true');
+
+        RAISE NOTICE 'Migration completed successfully.';
+    ELSE
+        -- Check for duplicate didIDMigration entries
+        SELECT COUNT(*) INTO duplicate_count
+        FROM "SystemKeyValues"
+        WHERE "Key" = 'didIDMigration';
+
+        IF duplicate_count > 1 THEN
+            -- Keep the first entry and delete the rest
+            WITH ordered_keys AS (
+                SELECT ctid
+                FROM "SystemKeyValues"
+                WHERE "Key" = 'didIDMigration'
+                ORDER BY ctid
+                LIMIT 1
+            )
+            DELETE FROM "SystemKeyValues"
+            WHERE "Key" = 'didIDMigration'
+            AND ctid NOT IN (SELECT ctid FROM ordered_keys);
+
+            RAISE NOTICE 'Cleaned up % duplicate didIDMigration entries.', duplicate_count - 1;
+        END IF;
+
+        RAISE NOTICE 'Migration has already been performed. No action needed.';
+    END IF;
+END $$;
 
 COMMIT;
