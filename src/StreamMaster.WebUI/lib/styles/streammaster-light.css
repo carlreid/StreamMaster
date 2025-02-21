@@ -9025,7 +9025,7 @@ div[aria-haspopup=dialog] {
 .sm-scroller-items .p-virtualscroller-content .sm-scroller-item:not(.p-disabled):hover {
   background: rgba(188, 191, 191, 0.16);
   color: #bcbfbf;
-  user-select: none;
+  cursor: pointer;
 }
 .sm-scroller-items .p-virtualscroller-content .sm-scroller-item.p-highlight {
   color: #bcbfbf !important;

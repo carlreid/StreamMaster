@@ -51,7 +51,7 @@
             &:not(.p-disabled):hover {
                 background: $highlightBg;
                 color: $highlightTextColor;
-                user-select: none;
+                cursor: pointer;
             }
 
             &.p-highlight {
