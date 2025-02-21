@@ -280,7 +280,14 @@ const SMScroller: React.FC<SMScrollerProperties> = ({ filter = false, itemSize =
           )}
         </div>
         <div className="sm-scroller-items">
-          <VirtualScroller ref={virtualScrollerRef} items={filteredValues} itemSize={itemSize} itemTemplate={getItemTemplate} scrollHeight={scrollHeight} />
+          <VirtualScroller
+            ref={virtualScrollerRef}
+            items={filteredValues}
+            itemSize={itemSize}
+            itemTemplate={getItemTemplate}
+            scrollHeight={scrollHeight}
+            style={{ height: scrollHeight }}
+          />
         </div>
       </div>
     </>
