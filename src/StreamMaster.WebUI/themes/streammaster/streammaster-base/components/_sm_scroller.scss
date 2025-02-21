@@ -49,12 +49,9 @@
             }
 
             &:not(.p-disabled):hover {
-                // background: $highlightBg;
-                border-color: $highlightBg;
-                border-radius: 0; // $borderRadius;
-                border-style: solid;
-                border-width: 1px;
+                background: $highlightBg;
                 color: $highlightTextColor;
+                user-select: none;
             }
 
             &.p-highlight {

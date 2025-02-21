@@ -9023,11 +9023,9 @@ div[aria-haspopup=dialog] {
   margin-right: 0.5rem;
 }
 .sm-scroller-items .p-virtualscroller-content .sm-scroller-item:not(.p-disabled):hover {
-  border-color: rgba(188, 191, 191, 0.16);
-  border-radius: 0;
-  border-style: solid;
-  border-width: 1px;
+  background: rgba(188, 191, 191, 0.16);
   color: #bcbfbf;
+  user-select: none;
 }
 .sm-scroller-items .p-virtualscroller-content .sm-scroller-item.p-highlight {
   color: #bcbfbf !important;
