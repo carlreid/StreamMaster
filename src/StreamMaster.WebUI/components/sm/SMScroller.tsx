@@ -1,5 +1,6 @@
 import StringEditor, { StringEditorRef } from '@components/inputs/StringEditor';
 import SMButton from '@components/sm/SMButton';
+import BanButton from '@components/buttons/BanButton';
 import { useSelectedItems } from '@lib/redux/hooks/selectedItems';
 import { Checkbox } from 'primereact/checkbox';
 import { useMountEffect } from 'primereact/hooks';
