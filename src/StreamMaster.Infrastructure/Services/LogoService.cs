@@ -251,17 +251,24 @@ public class LogoService(IHttpContextAccessor httpContextAccessor,
             return (null, channel.Logo, null);
         }
 
-        string fileName;
+        string fileName = channel.Logo.Remove(0, 14);
         if (channel.Logo.StartsWithIgnoreCase("/api/files/cu/"))
         {
-            fileName = channel.Logo.Remove(0, 14);
             return await GetCustomLogoAsync(fileName, cancellationToken);
         }
-        else
+
+        if (channel.Logo.StartsWithIgnoreCase("/api/files/lc/"))
         {
-            string test = LogoInfo.Cleanup(channel.Logo);
-            fileName = test.StartsWithIgnoreCase("http") ? test.GenerateFNV1aHash() : test;
+            return await GetLogoAsync(fileName, cancellationToken);
         }
+
+        if (channel.Logo.StartsWithIgnoreCase("/api/files/tv/"))
+        {
+            return await GetTVLogoAsync(fileName, cancellationToken);
+        }
+
+        string cleanedPath = LogoInfo.Cleanup(channel.Logo);
+        fileName = cleanedPath.StartsWithIgnoreCase("http") ? cleanedPath.GenerateFNV1aHash() : cleanedPath;
 
         (FileStream? fileStream, string? FileName, string? ContentType) ret = await GetLogoAsync(fileName, cancellationToken);
 
@@ -381,7 +388,7 @@ public class LogoService(IHttpContextAccessor httpContextAccessor,
 
     public static readonly MemoryCacheEntryOptions NeverRemoveCacheEntryOptions = new MemoryCacheEntryOptions().SetPriority(CacheItemPriority.NeverRemove);
 
-    private string GetContentType(string fileName)
+    internal string GetContentType(string fileName)
     {
         string cacheKey = $"ContentType-{fileName}";
 

@@ -17,6 +17,9 @@
     <None Remove="Services\SD\**" />
     <None Remove="Statistics\**" />
   </ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="StreamMaster.Infrastructure.UnitTests" />
+	</ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
