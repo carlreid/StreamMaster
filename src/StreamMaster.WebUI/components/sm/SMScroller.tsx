@@ -234,18 +234,20 @@ const SMScroller: React.FC<SMScrollerProperties> = ({ filter = false, itemSize =
           {/* <div className="layout-padding-bottom" /> */}
           {filter && (
             <div className="flex align-items-center justify-content-between gap-1 pr-2 sm-w-12">
-              {/* <div className="">
-                <BanButton
-                  buttonDisabled={selectedItems.length === 0}
-                  onClick={() => {
-                    setSelectedItems([]);
-                    props.onChange && props.onChange([]);
-                  }}
-                  tooltip="Clear Selections"
-                />
-              </div> */}
+              {props?.select && (
+                <div>
+                  <BanButton
+                    buttonDisabled={selectedItems.length === 0}
+                    onClick={() => {
+                      setSelectedItems([]);
+                      props.onChange && props.onChange([]);
+                    }}
+                    tooltip="Clear Selections"
+                  />
+                </div>
+              )}
 
-              <div className="flex align-items-center justify-content-between sm-w-12 p-2">
+              <div className="flex align-items-center justify-content-between sm-w-11 p-2">
                 <div className="sm-w-11">
                   <StringEditor
                     autoFocus
