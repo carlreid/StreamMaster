@@ -273,6 +273,7 @@ const SMScroller: React.FC<SMScrollerProperties> = ({ filter = false, itemSize =
                       stringEditorRef.current?.clear();
                       scrollTo(1);
                     }}
+                    tooltip="Clear Filter"
                   />
                 </div>
               </div>
