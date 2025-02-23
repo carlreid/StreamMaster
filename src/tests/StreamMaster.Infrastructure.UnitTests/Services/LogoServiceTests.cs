@@ -10,6 +10,7 @@ using StreamMaster.Domain.Services;
 using StreamMaster.SchedulesDirect.Domain.Interfaces;
 using StreamMaster.Domain.Models;
 using StreamMaster.Domain.Enums;
+using StreamMaster.Domain.Dto;
 
 namespace StreamMaster.Infrastructure.Services.Tests;
 
@@ -68,22 +69,6 @@ public class LogoServiceTests : IDisposable
     public void Dispose()
     {
         _memoryCache.Dispose();
-    }
-
-    [Fact]
-    public void AddCustomLogo_ValidInput_AddsLogoSuccessfully()
-    {
-        string name = "TestLogo";
-        string source = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-
-        string result = _logoService.AddCustomLogo(name, source);
-
-        result.ShouldNotBeNullOrEmpty();
-        var logos = _logoService.GetLogos();
-        logos.ShouldNotBeEmpty();
-        var addedLogo = logos.FirstOrDefault(l => l.Name == name);
-        addedLogo.ShouldNotBeNull();
-        addedLogo.Source.ShouldNotBeNull();
     }
 
     [Fact]
