@@ -303,6 +303,7 @@ export interface SettingDto
 	StreamStartTimeoutMs: number;
 	STRMBaseURL: string;
 	UiFolder: string;
+	UseChannelLogoForProgramLogo: boolean;
 	Version: string;
 	VideoStreamAlwaysUseEPGLogo: boolean;
 }
@@ -1221,6 +1222,7 @@ export interface UpdateSettingParameters
 	StreamShutDownDelayMs?: number;
 	StreamStartTimeoutMs?: number;
 	STRMBaseURL?: string;
+	UseChannelLogoForProgramLogo?: boolean;
 }
 export interface UpdateSettingRequest
 {

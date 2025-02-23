@@ -45,6 +45,7 @@ const MessagesEn: messages_enType = {
   backups: 'Backups',
   BackupVersionsToKeep: 'Versions',
   LogoCache: 'Cache Logos',
+  UseChannelLogoForProgramLogo: 'Use Channel Logo for Program Logo',
   changesServiceRestart: 'Changes require a service restart',
   channel: 'Channel',
   channels: 'Channels',

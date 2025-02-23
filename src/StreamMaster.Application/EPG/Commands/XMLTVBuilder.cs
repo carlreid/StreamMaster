@@ -1,47 +1,45 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Globalization;
-
-using Microsoft.AspNetCore.Http;
-
+﻿using Microsoft.AspNetCore.Http;
 using StreamMaster.Domain.Crypto;
 using StreamMaster.Domain.XML;
 using StreamMaster.Domain.XmltvXml;
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace StreamMaster.Application.EPG.Commands;
 
 public class XMLTVBuilder(
     IOptionsMonitor<SDSettings> sdSettingsMonitor,
+    IOptionsMonitor<Setting> settings,
     IEPGService EPGService,
-    ILogoService logoService,
     IFileUtilService fileUtilService,
     ICustomPlayListBuilder customPlayListBuilder,
     IHttpContextAccessor httpContextAccessor,
     ILogger<XMLTVBuilder> logger) : IXMLTVBuilder
 {
-    //private readonly ConcurrentDictionary<int, XMLTV> xmlDict = new();
-
     public async Task<XMLTV?> CreateXmlTv(List<VideoStreamConfig> videoStreamConfigs, CancellationToken cancellationToken)
     {
-        //xmlDict.Clear();
         try
         {
-            XMLTV xmlTv = XMLUtil.NewXMLTV;
+            cancellationToken.ThrowIfCancellationRequested();
 
+            XMLTV xmlTv = XMLUtil.NewXMLTV;
             await ProcessServicesAsync(xmlTv, videoStreamConfigs, cancellationToken);
 
+            // Check cancellation before sorting
+            cancellationToken.ThrowIfCancellationRequested();
+
             xmlTv.SortXmlTv();
-            //xmlDict.Clear();
             return xmlTv;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             logger.LogError("Failed to create the XMLTV file. Exception: {Message}", ex.Message);
             return null;
-        }
-        finally
-        {
-            //xmlDict.Clear();
         }
     }
 
@@ -53,7 +51,12 @@ public class XMLTVBuilder(
             return string.Empty;
         }
 
-        string url = $"{request.Scheme}://{request.Host}";
+        var handler = new DefaultInterpolatedStringHandler(3, 2);
+        handler.AppendFormatted(request.Scheme);
+        handler.AppendLiteral("://");
+        handler.AppendFormatted(request.Host);
+        string url = handler.ToStringAndClear();
+
         if (url.StartsWith("wss"))
         {
             url = "https" + url[3..];
@@ -61,7 +64,7 @@ public class XMLTVBuilder(
         return url;
     }
 
-    private async Task ProcessServicesAsync(XMLTV xmlTv, List<VideoStreamConfig> videoStreamConfigs, CancellationToken cancellation)
+    internal async Task ProcessServicesAsync(XMLTV xmlTv, List<VideoStreamConfig> videoStreamConfigs, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         if (videoStreamConfigs == null || videoStreamConfigs.Count == 0)
@@ -69,30 +72,33 @@ public class XMLTVBuilder(
             return;
         }
 
-        // Dictionary for quick lookup by EPGId
-        //Dictionary<string, VideoStreamConfig> videoStreamConfigDictionary = videoStreamConfigs.ToDictionary(a => a.EPGId);
-
         // Process Schedules Direct Configurations
         List<VideoStreamConfig> sdVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.SchedulesDirectId)];
         if (sdVideoStreamConfigs.Count > 0)
         {
             await ProcessScheduleDirectConfigsAsync(xmlTv, sdVideoStreamConfigs);
         }
+
         cancellation.ThrowIfCancellationRequested();
+
         // Process Dummy Configurations
         List<VideoStreamConfig> dummyVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.DummyId)];
         if (dummyVideoStreamConfigs.Count > 0)
         {
             ProcessDummyConfigs(xmlTv, dummyVideoStreamConfigs);
         }
+
         cancellation.ThrowIfCancellationRequested();
+
         // Process Custom PlayList Configurations
         List<VideoStreamConfig> customVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.CustomPlayListId)];
         if (customVideoStreamConfigs.Count > 0)
         {
             ProcessCustomPlaylists(xmlTv, customVideoStreamConfigs);
         }
+
         cancellation.ThrowIfCancellationRequested();
+
         // Process EPG Files
         List<EPGFile> epgFiles = await EPGService.GetEPGFilesAsync();
         if (epgFiles.Count > 0)
@@ -106,18 +112,8 @@ public class XMLTVBuilder(
         GC.Collect();
     }
 
-    private async Task ProcessScheduleDirectConfigsAsync(XMLTV xmlTv, List<VideoStreamConfig> SDVideoStreamConfigs)
+    internal async Task ProcessScheduleDirectConfigsAsync(XMLTV xmlTv, List<VideoStreamConfig> SDVideoStreamConfigs)
     {
-        //if (!xmlDict.TryGetValue(EPGHelper.SchedulesDirectId, out XMLTV? xml))
-        //{
-        //    xml = await fileUtilService.ReadXmlFileAsync(BuildInfo.SDXMLFile).ConfigureAwait(false);
-        //    if (xml == null)
-        //    {
-        //        return;
-        //    }
-        //    _ = xmlDict.TryAdd(EPGHelper.SchedulesDirectId, xml);
-        //}
-
         XMLTV? xml = await fileUtilService.ReadXmlFileAsync(BuildInfo.SDXMLFile).ConfigureAwait(false);
         if (xml == null)
         {
@@ -125,17 +121,15 @@ public class XMLTVBuilder(
         }
 
         (List<XmltvChannel> newChannels, List<XmltvProgramme> newProgrammes) = ProcessXML(xml, SDVideoStreamConfigs);
-
         xmlTv.Channels.AddRange(newChannels);
         xmlTv.Programs.AddRange(newProgrammes);
     }
 
-    private void ProcessDummyConfigs(XMLTV xmlTv, List<VideoStreamConfig> dummyConfigs)
+    internal void ProcessDummyConfigs(XMLTV xmlTv, List<VideoStreamConfig> dummyConfigs)
     {
         ConcurrentBag<XmltvChannel> channels = [];
         ConcurrentBag<XmltvProgramme> programs = [];
 
-        // Process each config in parallel
         _ = Parallel.ForEach(dummyConfigs, config =>
         {
             if (config.OutputProfile is null)
@@ -143,11 +137,13 @@ public class XMLTVBuilder(
                 return;
             }
 
+            string logoSrc = settings.CurrentValue.LogoCache ? config.Logo : config.OGLogo;
+
             XmltvChannel channel = new()
             {
                 Id = config.OutputProfile.Id,
                 DisplayNames = [new XmltvText { Text = config.Name }],
-                Icons = [new XmltvIcon { Src = config.Logo }]
+                Icons = [new XmltvIcon { Src = logoSrc }]
             };
             channels.Add(channel);
 
@@ -159,8 +155,8 @@ public class XMLTVBuilder(
             {
                 programs.Add(new XmltvProgramme
                 {
-                    Start = startTime.ToString("yyyyMMddHHmmss 0000", CultureInfo.InvariantCulture),
-                    Stop = startTime.AddHours(fillerProgramLength).ToString("yyyyMMddHHmmss 0000", CultureInfo.InvariantCulture),
+                    Start = FormatDateTime(startTime),
+                    Stop = FormatDateTime(startTime.AddHours(fillerProgramLength)),
                     Channel = config.OutputProfile.Id,
                     Titles = [new XmltvText { Language = "en", Text = config.Name }]
                 });
@@ -169,39 +165,34 @@ public class XMLTVBuilder(
             }
         });
 
-        // Add results back to the shared collections
         xmlTv.Channels.AddRange(channels);
         xmlTv.Programs.AddRange(programs);
     }
 
-    private async Task ProcessEPGFileConfigsAsync(XMLTV xmlTv, List<VideoStreamConfig> configs, List<EPGFile> epgFiles, CancellationToken cancellationToken)
+    internal async Task ProcessEPGFileConfigsAsync(XMLTV xmlTv, List<VideoStreamConfig> configs, List<EPGFile> epgFiles, CancellationToken cancellationToken)
     {
         foreach (EPGFile epgFile in epgFiles)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Find matching configs
             List<VideoStreamConfig> matchingConfigs = [.. configs.Where(a => a.EPGNumber == epgFile.EPGNumber)];
             if (matchingConfigs.Count == 0)
             {
-                continue; // Skip processing if no matching configs
+                continue;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Retrieve or read the XMLTV file
             XMLTV? xml = await fileUtilService.ReadXmlFileAsync(epgFile).ConfigureAwait(false);
             if (xml == null)
             {
-                continue; // Skip processing if the XML file is null
+                continue;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Process the XML to extract channels and programmes
             (List<XmltvChannel> newChannels, List<XmltvProgramme> newProgrammes) = ProcessXML(xml, matchingConfigs);
 
-            // Synchronize additions to shared collections
             lock (xmlTv.Channels)
             {
                 xmlTv.Channels.AddRange(newChannels);
@@ -214,38 +205,36 @@ public class XMLTVBuilder(
         }
     }
 
-    private void ProcessCustomPlaylists(XMLTV xmlTv, List<VideoStreamConfig> customConfigs)
+    internal void ProcessCustomPlaylists(XMLTV xmlTv, List<VideoStreamConfig> customConfigs)
     {
         ConcurrentBag<XmltvChannel> channels = [];
         ConcurrentBag<XmltvProgramme> programs = [];
 
         _ = Parallel.ForEach(customConfigs, config =>
         {
+            if (config.OutputProfile is null)
+            {
+                return;
+            }
+
+            string logoSrc = settings.CurrentValue.LogoCache ? config.Logo : config.OGLogo;
+
             XmltvChannel channel = new()
             {
-                Id = config.OutputProfile!.Id,
+                Id = config.OutputProfile.Id,
                 DisplayNames = [new XmltvText { Text = config.Name }]
             };
 
             CustomPlayList? nfo = customPlayListBuilder.GetCustomPlayList(config.Name);
-
             string? logoFile = customPlayListBuilder.GetCustomPlayListLogoFromFileName(config.Name);
-            if (logoFile is not null)
+
+            if (logoFile is not null && !string.IsNullOrEmpty(logoFile))
             {
-                if (!string.IsNullOrEmpty(logoFile))
-                {
-                    channel.Icons =
-                [
-                    new XmltvIcon { Src = logoFile }
-                ];
-                }
-                else if (nfo?.FolderNfo != null && !string.IsNullOrEmpty(nfo.FolderNfo.Thumb?.Text))
-                {
-                    channel.Icons =
-                [
-                    new XmltvIcon { Src = logoFile }
-                ];
-                }
+                channel.Icons = [new XmltvIcon { Src = logoFile }];
+            }
+            else if (nfo?.FolderNfo?.Thumb != null && !string.IsNullOrEmpty(nfo.FolderNfo.Thumb.Text))
+            {
+                channel.Icons = [new XmltvIcon { Src = nfo.FolderNfo.Thumb.Text }];
             }
 
             channels.Add(channel);
@@ -253,12 +242,11 @@ public class XMLTVBuilder(
             List<XmltvProgramme> newProgrammes = GetXmltvProgrammeForPeriod(config, SMDT.UtcNow, sdSettingsMonitor.CurrentValue.SDEPGDays, config.BaseUrl);
             foreach (XmltvProgramme programme in newProgrammes)
             {
-                programme.Channel = config.OutputProfile!.Id;
+                programme.Channel = config.OutputProfile.Id;
                 programs.Add(programme);
             }
         });
 
-        // Add results to the shared collections after parallel processing
         xmlTv.Channels.AddRange(channels);
         xmlTv.Programs.AddRange(programs);
     }
@@ -269,7 +257,7 @@ public class XMLTVBuilder(
         List<XmltvProgramme> ret = [];
         foreach ((Movie Movie, DateTime StartTime, DateTime EndTime) x in moviesForPeriod)
         {
-            var xmltvProgramme = XmltvProgrammeConverter.ConvertMovieToXmltvProgramme(x.Movie, videoStreamConfig.EPGId, x.StartTime, x.EndTime);
+            var xmltvProgramme = ConvertMovieToXmltvProgramme(x.Movie, videoStreamConfig.EPGId, x.StartTime, x.EndTime);
             if (x.Movie.Thumb is not null && !string.IsNullOrEmpty(x.Movie.Thumb.Text))
             {
                 string src = $"/api/files/smChannelLogo/{videoStreamConfig.ChannelNumber}";
@@ -280,11 +268,9 @@ public class XMLTVBuilder(
         return ret;
     }
 
-    private (List<XmltvChannel> xmltvChannels, List<XmltvProgramme> programs) ProcessXML(XMLTV xml, List<VideoStreamConfig> videoStreamConfigs)
+    internal (List<XmltvChannel> xmltvChannels, List<XmltvProgramme> programs) ProcessXML(XMLTV xml, List<VideoStreamConfig> videoStreamConfigs)
     {
         string baseUrl = GetUrlWithPath();
-
-        // Precompute lookup dictionaries for channels and programs
         Dictionary<string, List<XmltvChannel>> channelsById = xml.Channels
             .GroupBy(channel => channel.Id)
             .ToDictionary(group => group.Key, group => group.ToList());
@@ -293,7 +279,6 @@ public class XMLTVBuilder(
             .GroupBy(program => program.Channel)
             .ToDictionary(group => group.Key, group => group.ToList());
 
-        // Initialize new lists for channels and programmes to be added
         List<XmltvChannel> newChannels = [];
         List<XmltvProgramme> newProgrammes = [];
 
@@ -301,37 +286,85 @@ public class XMLTVBuilder(
         {
             if (channelsById.TryGetValue(videoStreamConfig.EPGId, out List<XmltvChannel>? matchingChannels))
             {
-                foreach (XmltvChannel? channel in matchingChannels)
+                XmltvChannel? firstChannel = matchingChannels[0];
+                XmltvChannel updatedChannel = new()
                 {
-                    XmltvChannel updatedChannel = new()
+                    Id = videoStreamConfig.OutputProfile!.Id,
+                    DisplayNames = firstChannel.DisplayNames?.Count > 0 ? [firstChannel.DisplayNames[0]] : [new XmltvText(videoStreamConfig.OutputProfile.Id)],
+                    Icons = firstChannel.Icons?.Select(_ => new XmltvIcon
                     {
-                        Id = videoStreamConfig.OutputProfile!.Id,
-                        DisplayNames = channel.DisplayNames, // Reuse immutable properties
-                        Icons = channel.Icons?.Select(_ => new XmltvIcon
-                        {
-                            Src = videoStreamConfig.Logo // Update logo with the provided one
-                        }).ToList()
-                    };
+                        Src = settings.CurrentValue.LogoCache ? videoStreamConfig.Logo : videoStreamConfig.OGLogo
+                    }).ToList()
+                };
 
-                    newChannels.Add(updatedChannel);
-                }
+                newChannels.Add(updatedChannel);
             }
 
             if (programsByChannel.TryGetValue(videoStreamConfig.EPGId, out List<XmltvProgramme>? matchingPrograms))
             {
-                foreach (XmltvProgramme? program in matchingPrograms)
+                foreach (XmltvProgramme program in matchingPrograms)
                 {
-                    program.Channel = videoStreamConfig.OutputProfile!.Id;
-                    program.Icons = program.Icons?.Select(icon => new XmltvIcon
-                    {
-                        Src = $"{baseUrl}/api/files/pr/{icon.Src.GenerateFNV1aHash()}"
-                    }).ToList();
+                    var newProgram = program.DeepCopy();
+                    newProgram.Channel = videoStreamConfig.OutputProfile!.Id;
 
-                    newProgrammes.Add(program);
+                    if (videoStreamConfig.EPGNumber == EPGHelper.SchedulesDirectId)
+                    {
+                        newProgram.Icons = program.Icons?.Select(icon => new XmltvIcon
+                        {
+                            Src = $"{baseUrl}/api/files/pr/{icon.Src.GenerateFNV1aHash()}"
+                        }).ToList();
+                    }
+
+                    if (settings.CurrentValue.UseChannelLogoForProgramLogo &&
+                        (newProgram.Icons == null || newProgram.Icons.Count == 0))
+                    {
+                        string logoSrc = settings.CurrentValue.LogoCache ? videoStreamConfig.Logo : videoStreamConfig.OGLogo;
+                        newProgram.Icons = [new XmltvIcon { Src = logoSrc }];
+                    }
+
+                    newProgrammes.Add(newProgram);
                 }
             }
         }
 
         return (newChannels, newProgrammes);
+    }
+
+    public static XmltvProgramme ConvertMovieToXmltvProgramme(Movie movie, string channelId, DateTime StartTime, DateTime EndTime)
+    {
+        XmltvProgramme programme = new()
+        {
+            Titles = [new XmltvText { Text = movie.Title }],
+            Descriptions = !string.IsNullOrEmpty(movie.Plot) ? [new XmltvText { Text = movie.Plot }] : null,
+            Start = FormatDateTime(StartTime),
+            Stop = FormatDateTime(EndTime),
+            Channel = channelId,
+            Categories = movie.Genres?.ConvertAll(g => new XmltvText { Text = g }),
+            Countries = !string.IsNullOrEmpty(movie.Country) ? [new() { Text = movie.Country }] : null,
+            Rating = movie.Ratings?.Rating?.ConvertAll(r => new XmltvRating { Value = r.Value, System = r.Name }),
+            StarRating = movie.Ratings?.Rating?.ConvertAll(r => new XmltvRating { Value = r.Value, System = r.Name }),
+            Credits = movie.Actors != null ? new XmltvCredit
+            {
+                Actors = movie.Actors.ConvertAll(a => new XmltvActor { Role = a.Role, Actor = a.Name })
+            } : null,
+            EpisodeNums = !string.IsNullOrEmpty(movie.Id) ?
+                [new XmltvEpisodeNum { System = "default", Text = movie.Id }] : null,
+            Language = !string.IsNullOrEmpty(movie.Country) ?
+                new XmltvText { Text = movie.Country } : null,
+            Length = movie.Runtime > 0 ?
+                new XmltvLength { Units = "minutes", Text = movie.Runtime.ToString() } : null,
+            Video = new XmltvVideo
+            {
+                Aspect = movie.Fileinfo?.Streamdetails?.Video?.Aspect ?? "",
+                Quality = movie.Rating
+            }
+        };
+
+        return programme;
+    }
+
+    private static string FormatDateTime(DateTime dateTime)
+    {
+        return dateTime.ToString("yyyyMMddHHmmss 0000", CultureInfo.InvariantCulture);
     }
 }

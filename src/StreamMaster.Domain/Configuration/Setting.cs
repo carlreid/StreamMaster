@@ -27,6 +27,7 @@ public class BaseSettings
     public int GlobalStreamLimit { get; set; } = 1;
     public int IconCacheExpirationDays { get; set; } = 7;
     public bool LogoCache { get; set; } = true;
+    public bool UseChannelLogoForProgramLogo { get; set; } = true;
     public string M3U8OutPutProfile { get; set; } = "SMFFMPEG";
     public int MaxConcurrentDownloads { get; set; } = 8;
     public int MaxConnectRetry { get; set; } = 20;

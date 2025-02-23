@@ -231,9 +231,9 @@ public partial class UpdateSettingRequestHandler(
             currentSetting.DebugAPI = request.Parameters.DebugAPI.Value;
         }
 
-        if (request.Parameters.PrettyEPG.HasValue)
+        if (request.Parameters.UseChannelLogoForProgramLogo.HasValue)
         {
-            currentSetting.PrettyEPG = request.Parameters.PrettyEPG.Value;
+            currentSetting.UseChannelLogoForProgramLogo = request.Parameters.UseChannelLogoForProgramLogo.Value;
         }
 
         if (request.Parameters.PrettyEPG.HasValue)
@@ -262,6 +262,7 @@ public partial class UpdateSettingRequestHandler(
         }
 
         #region Streams
+
         if (request.Parameters.StreamReadTimeOutMs.HasValue)
         {
             currentSetting.StreamReadTimeOutMs = request.Parameters.StreamReadTimeOutMs.Value;
@@ -286,7 +287,8 @@ public partial class UpdateSettingRequestHandler(
         {
             currentSetting.StreamRetryLimit = request.Parameters.StreamRetryLimit.Value;
         }
-        #endregion
+
+        #endregion Streams
 
         if (request.Parameters.BackupEnabled.HasValue)
         {

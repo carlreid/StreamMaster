@@ -17,6 +17,7 @@ const help_en: help_enType = {
   M3U8OutPutProfile: 'The profile to use when source is m3u8',
   BackupInterval: 'Backup Interval (hours)',
   LogoCache: 'Cache Logos to the local disk to speed things up',
+  UseChannelLogoForProgramLogo: 'If EPG source has no pogram logos, then use this to fallback to channel logo',
   CleanURLs: 'Remove URLs from being logged',
   ShowIntros: 'Show Intros never, once at the beginning, or always',
   // ClientUserAgent: 'Client User Agent used for downloads, epg/m3u/icons/schedules direct',

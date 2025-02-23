@@ -6,6 +6,7 @@ namespace StreamMaster.Domain.Models;
 public class VideoStreamConfig
 {
     public int EPGNumber { get; set; }
+
     /// <summary>
     /// Gets or sets the unique identifier for the channel.
     /// </summary>
@@ -25,6 +26,11 @@ public class VideoStreamConfig
     /// Gets or sets the URL or path to the channel's logo.
     /// </summary>
     public string Logo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the URL or path to the channel's OG logo.
+    /// </summary>
+    public string OGLogo { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the group to which the channel belongs.
@@ -76,7 +82,7 @@ public class VideoStreamConfig
     public bool IsCustom => M3UFileId == EPGHelper.CustomPlayListId;
     public bool IsIntro => M3UFileId == EPGHelper.IntroPlayListId;
 
-    //public bool IsShort { get; set; } = false;
     public string BaseUrl { get; set; } = string.Empty;
+
     public int StreamGroupProfileId { get; set; }
 }
