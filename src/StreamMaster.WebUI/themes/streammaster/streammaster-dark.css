@@ -7856,10 +7856,10 @@
   border-top-style: solid;
 }
 
-.sm-hover, .sm-dropdown, .sm-icon-selector, .stringeditor .p-inputtext:not(.p-inputnumber-input), .sm-iconselector-lg {
+.sm-hover, .sm-icon-selector, .stringeditor .p-inputtext:not(.p-inputnumber-input), .sm-iconselector-lg {
   transition: border-color 0.15s;
 }
-.sm-hover:not(.p-disabled):hover:not(:focus), .sm-dropdown:not(.p-disabled):hover:not(:focus), .sm-icon-selector:not(.p-disabled):hover:not(:focus), .stringeditor .p-inputtext:not(.p-disabled):hover:not(:focus):not(.p-inputnumber-input), .sm-iconselector-lg:not(.p-disabled):hover:not(:focus) {
+.sm-hover:not(.p-disabled):hover:not(:focus), .sm-icon-selector:not(.p-disabled):hover:not(:focus), .stringeditor .p-inputtext:not(.p-disabled):hover:not(:focus):not(.p-inputnumber-input), .sm-iconselector-lg:not(.p-disabled):hover:not(:focus) {
   border-color: #bcbfbf;
   border-radius: 6px;
   border-style: solid;
@@ -9230,15 +9230,7 @@ div[aria-haspopup=dialog] {
 }
 
 .sm-dropdown {
-  align-items: center;
-  border-color: transparent;
-  border-style: solid;
-  border-width: 0.1rem;
-  display: flex;
-  height: 1.4rem !important;
-  justify-content: start;
-  max-height: 1.4rem !important;
-  min-height: 1.4rem !important;
+  cursor: pointer;
 }
 
 .sm-scroller-header {

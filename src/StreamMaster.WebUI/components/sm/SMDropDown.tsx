@@ -57,6 +57,7 @@ const SMDropDown = forwardRef<SMDropDownRef, ExtendedSMDropDownProperties>(
           autoPlacement={autoPlacement}
           icon="pi-chevron-down"
           buttonIsLoading={isLoading}
+          buttonClassName='sm-dropdown'
           ref={smOverlayRef}
           zIndex={zIndex}
           {...props}
