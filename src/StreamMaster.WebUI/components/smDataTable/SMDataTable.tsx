@@ -953,9 +953,8 @@ const SMDataTable = <T extends DataTableValue>(props: SMDataTableProps<T>, ref: 
               className={'sm-rowreorder'}
               // style={getColumnStyles({ width: '2rem' } as ColumnMeta)}
             />
-            {props.columns &&
-              props.columns
-                .filter((col) => col.removed !== true)
+            {props.columns
+                ?.filter((col) => col.removed !== true)
                 .map((col) => (
                   <Column
                     align={getAlign(col.align, col.fieldType)}

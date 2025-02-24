@@ -40,6 +40,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import SimpleButton from "../../components/buttons/SimpleButton";
 import SMStreamMenu from "./SMStreamMenu";
 import useSelectedSMItems from "./useSelectedSMItems";
+import PlaySMStreamDialog from "@components/smstreams/PlaySMStreamDialog";
 
 interface SMStreamDataSelectorProperties {
 	readonly enableEdit?: boolean;
@@ -93,6 +94,7 @@ const SMStreamDataSelector = ({
 				<StreamVisibleDialog iconFilled={false} value={data} />
 				<EditSMStreamDialog smStreamDto={data} />
 				<DeleteSMStreamDialog smStream={data} />
+				<PlaySMStreamDialog smStream={data} />
 			</div>
 		);
 	}, []);
@@ -145,7 +147,7 @@ const SMStreamDataSelector = ({
 
 			let toolTip = "Add Channel";
 			if (selectedSMChannel !== undefined) {
-				toolTip = 'Remove Stream From "' + selectedSMChannel.Name + '"';
+				toolTip = `Remove Stream From "${selectedSMChannel.Name}"`;
 				if (found)
 					return (
 						<div className="flex align-content-center justify-content-center">
@@ -174,7 +176,7 @@ const SMStreamDataSelector = ({
 						</div>
 					);
 
-				toolTip = 'Add Stream To "' + selectedSMChannel.Name + '"';
+				toolTip = `Add Stream To "${selectedSMChannel.Name}"`;
 				return (
 					<div className="flex align-content-center justify-content-center">
 						<SMButton

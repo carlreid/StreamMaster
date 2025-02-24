@@ -16,6 +16,7 @@
     "i18next-browser-languagedetector": "^8.0.4",
     "json-edit-react": "^1.23.0",
     "loglevel": "^1.9.2",
+    "mpegts.js": "^1.8.0",
     "primeicons": "^7.0.0",
     "primereact": "^10.9.2",
     "react": "^19.0.0",
