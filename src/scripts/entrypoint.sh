@@ -198,7 +198,10 @@ rm -rf /config/hls
 
 # Create all required directories
 for dir in "${dirs[@]}"; do
-    safe_mkdir "$dir"
+    if ! safe_mkdir "$dir"; then
+        echo "Critical directory creation failed for: $dir"
+        exit 1
+    fi
 done
 
 rename_directory /config/settings /config/Settings
@@ -210,7 +213,10 @@ trap 'rm -f "$temp_script"' EXIT
 # Change ownership of the /app directory
 if [ "$PUID" -ne 0 ] || [ "$PGID" -ne 0 ]; then
     # Set ownership for main directories
-    safe_chown "${PUID:-0}:${PGID:-0}" "/app"
+    if ! safe_chown "${PUID:-0}:${PGID:-0}" "/app"; then
+        echo "Critical ownership change failed for: /app"
+        exit 1
+    fi
 
     # Handle /config directory permissions
     # Create a temporary script for find -exec
