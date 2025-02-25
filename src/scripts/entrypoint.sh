@@ -240,8 +240,14 @@ if [ "$PUID" -ne 0 ] || [ "$PGID" -ne 0 ]; then
 fi
 
 # Set specific permissions for backup/restore directories
-chmod 775 "$BACKUP_DIR"
-chmod 775 "$RESTORE_DIR"
+if ! chmod 775 "$BACKUP_DIR"; then
+    echo "Failed to set permissions on $BACKUP_DIR"
+    exit 1
+fi
+if ! chmod 775 "$RESTORE_DIR"; then
+    echo "Failed to set permissions on $RESTORE_DIR"
+    exit 1
+fi
 
 # Handle PostgreSQL permissions
 if [ "$POSTGRES_ISLOCAL" -eq 1 ] && [ "$POSTGRES_SET_PERMS" -eq 1 ]; then
@@ -299,7 +305,10 @@ safe_chown "${PUID:-0}:${PGID:-0}" "$RESTORE_DIR"
 if [ "$PUID" -ne 0 ]; then
     if usermod -aG postgres "$user_name"; then
         echo "User $user_name added to group postgres successfully."
-        chmod -R 775 "$PGDATA"
+        if ! chmod -R 775 "$PGDATA"; then
+            echo "Failed to set permissions on $PGDATA"
+            exit 1
+        fi
     else
         echo "Failed to add user $user_name to group postgres."
     fi
