@@ -191,6 +191,9 @@ done
 rename_directory /config/settings /config/Settings
 rename_directory /config/backups /config/Backups
 
+# Create trap for temporary file cleanup
+trap 'rm -f "$temp_script"' EXIT
+
 # Change ownership of the /app directory
 if [ "$PUID" -ne 0 ] || [ "$PGID" -ne 0 ]; then
     # Set ownership for main directories
@@ -207,8 +210,6 @@ if [ "$PUID" -ne 0 ] || [ "$PGID" -ne 0 ]; then
         -not -path '/config/tv-logos' \
         -not -path '/config/DB' \
         -exec "$temp_script" {} \;
-
-    rm "$temp_script"
 
     # Handle special directories
     safe_chown "${PUID:-0}:${PGID:-0}" '/config/tv-logos'
