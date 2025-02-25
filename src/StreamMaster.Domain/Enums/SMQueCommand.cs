@@ -4,6 +4,7 @@ public enum SMQueCommand
 {
     CacheChannelLogos,
     CacheStreamLogos,
+    CacheEPGChannelLogos,
 
     EPGRemovedExpiredKeys,
     ScanForTvLogos,

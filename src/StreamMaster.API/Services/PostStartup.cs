@@ -57,10 +57,15 @@ public class PostStartup(
 
         while (taskQueue.HasJobs())
         {
-            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
         }
 
-        //await dataRefreshService.RefreshAll();
+        await taskQueue.CacheEPGChannelLogos(cancellationToken).ConfigureAwait(false);
+
+        while (taskQueue.HasJobs())
+        {
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+        }
 
         await taskQueue.SetIsSystemReady(true, cancellationToken).ConfigureAwait(false);
     }

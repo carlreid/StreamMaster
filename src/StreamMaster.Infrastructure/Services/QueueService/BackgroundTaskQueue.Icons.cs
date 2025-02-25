@@ -10,6 +10,11 @@ public partial class BackgroundTaskQueue : ILogoTasks
         await QueueAsync(SMQueCommand.CacheChannelLogos, cancellationToken).ConfigureAwait(false);
     }
 
+    public async ValueTask CacheEPGChannelLogos(CancellationToken cancellationToken = default)
+    {
+        await QueueAsync(SMQueCommand.CacheEPGChannelLogos, cancellationToken).ConfigureAwait(false);
+    }
+
     public async ValueTask CacheStreamLogos(CancellationToken cancellationToken = default)
     {
         await QueueAsync(SMQueCommand.CacheStreamLogos, cancellationToken).ConfigureAwait(false);

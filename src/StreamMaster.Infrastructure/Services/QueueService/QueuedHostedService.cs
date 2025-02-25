@@ -16,6 +16,7 @@ using StreamMaster.Application.SchedulesDirect.Commands;
 using StreamMaster.Application.Services;
 using StreamMaster.Application.Statistics.Commands;
 using StreamMaster.Application.StreamGroups.Commands;
+using StreamMaster.Domain.API;
 using StreamMaster.Domain.Enums;
 
 namespace StreamMaster.Infrastructure.Services.QueueService;
@@ -93,6 +94,10 @@ public sealed class QueuedHostedService(
 
                     case SMQueCommand.CacheStreamLogos:
                         await _sender.Send(new CacheSMStreamLogosRequest(), cancellationSource.Token).ConfigureAwait(false);
+                        break;
+
+                    case SMQueCommand.CacheEPGChannelLogos:
+                        await _sender.Send(new CacheEPGChannelLogosRequest(), cancellationSource.Token).ConfigureAwait(false);
                         break;
 
                     case SMQueCommand.ScanForTvLogos:
