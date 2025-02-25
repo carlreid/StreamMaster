@@ -5,6 +5,17 @@ group_name="nonRootGroup"
 
 . /env.sh
 
+# Validate PUID/PGID before proceeding
+if [ "$PUID" -lt 1 ] || [ "$PUID" -gt 65534 ] 2>/dev/null; then
+    echo "Invalid PUID: $PUID. Must be between 1 and 65534"
+    exit 1
+fi
+
+if [ "$PGID" -lt 1 ] || [ "$PGID" -gt 65534 ] 2>/dev/null; then
+    echo "Invalid PGID: $PGID. Must be between 1 and 65534"
+    exit 1
+fi
+
 echo "{
   \"defaultPort\": $DEFAULT_PORT,
   \"defaultBaseUrl\": \"${BASE_URL}\"
