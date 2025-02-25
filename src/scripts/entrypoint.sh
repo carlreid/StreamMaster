@@ -279,7 +279,9 @@ echo "  UID: $(id -u postgres) GID: $(id -g postgres)"
 
 if [ "$POSTGRES_ISLOCAL" -eq 1 ]; then
     # Start the database
+    trap 'pkill postgres' EXIT
     /usr/local/bin/docker-entrypoint.sh postgres &
+    trap - EXIT
 fi
 
 if wait_for_postgres "$POSTGRES_HOST" "5432" "$POSTGRES_MAX_ATTEMPTS" "$POSTGRES_WAIT_INTERVAL"; then
