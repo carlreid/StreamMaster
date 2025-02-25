@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. /env.sh
+
 user_name="nonRootUser"
 group_name="nonRootGroup"
 
@@ -15,8 +17,6 @@ declare -a dirs=(
     "$BACKUP_DIR"
     "$RESTORE_DIR"
 )
-
-. /env.sh
 
 # Validate PUID/PGID before proceeding
 if [ "$PUID" -lt 1 ] || [ "$PUID" -gt 65534 ] 2>/dev/null; then
