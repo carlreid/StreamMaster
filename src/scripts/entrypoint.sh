@@ -140,6 +140,10 @@ rename_directory() {
     fi
 }
 
+# PostgreSQL connection parameters
+POSTGRES_MAX_ATTEMPTS=${POSTGRES_MAX_ATTEMPTS:-20}
+POSTGRES_WAIT_INTERVAL=${POSTGRES_WAIT_INTERVAL:-5}
+
 wait_for_postgres() {
     local host="$1"
     local port="$2"
@@ -257,7 +261,7 @@ if [ "$POSTGRES_ISLOCAL" -eq 1 ]; then
     /usr/local/bin/docker-entrypoint.sh postgres &
 fi
 
-if wait_for_postgres "$POSTGRES_HOST" "5432" 20 5; then
+if wait_for_postgres "$POSTGRES_HOST" "5432" "$POSTGRES_MAX_ATTEMPTS" "$POSTGRES_WAIT_INTERVAL"; then
     echo "Postgres is up"
 
     if check_files_ready_for_restore; then
