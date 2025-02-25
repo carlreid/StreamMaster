@@ -29,10 +29,13 @@ if [ "$PGID" -lt 1 ] || [ "$PGID" -gt 65534 ] 2>/dev/null; then
     exit 1
 fi
 
-echo "{
+if ! echo "{
   \"defaultPort\": $DEFAULT_PORT,
   \"defaultBaseUrl\": \"${BASE_URL}\"
-}" >/app/wwwroot/config.json
+}" >/app/wwwroot/config.json; then
+    echo "Failed to create config.json"
+    exit 1
+fi
 
 # Safe directory creation function
 safe_mkdir() {
