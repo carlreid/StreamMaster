@@ -127,15 +127,21 @@ rename_directory() {
     # Check for case sensitivity and existence of the destination directory
     if [ "$src" = "$dest" ]; then
         return 1
-    elif [ -d "$dest" ]; then
+    fi
+
+    # Use temporary destination for atomic move
+    local temp_dest="${dest}.tmp"
+    if [ -d "$dest" ] || [ -d "$temp_dest" ]; then
         return 1
     fi
 
     # Perform the rename
-    if mv "$src" "$dest"; then
+    if mv "$src" "$temp_dest" && mv "$temp_dest" "$dest"; then
         echo "Directory renamed successfully from $src to $dest"
     else
         echo "Failed to rename directory from $src to $dest"
+        # Cleanup temp directory if move failed
+        rm -rf "$temp_dest" 2>/dev/null
         return 1
     fi
 }
