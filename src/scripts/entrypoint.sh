@@ -18,15 +18,23 @@ declare -a dirs=(
     "$RESTORE_DIR"
 )
 
-# Validate PUID/PGID before proceeding
-if [ "$PUID" -lt 1 ] || [ "$PUID" -gt 65534 ] 2>/dev/null; then
-    echo "Invalid PUID: $PUID. Must be between 1 and 65534"
-    exit 1
+# Validate PUID/PGID only if they are set and non-zero
+if [ ! -z "$PUID" ]; then
+    if [ "$PUID" -eq 0 ]; then
+        echo "Running with root user (PUID=0)"
+    elif [ "$PUID" -lt 1 ] || [ "$PUID" -gt 65534 ] 2>/dev/null; then
+        echo "Invalid PUID: $PUID. Must be between 1 and 65534"
+        exit 1
+    fi
 fi
 
-if [ "$PGID" -lt 1 ] || [ "$PGID" -gt 65534 ] 2>/dev/null; then
-    echo "Invalid PGID: $PGID. Must be between 1 and 65534"
-    exit 1
+if [ ! -z "$PGID" ]; then
+    if [ "$PGID" -eq 0 ]; then
+        echo "Running with root group (PGID=0)"
+    elif [ "$PGID" -lt 1 ] || [ "$PGID" -gt 65534 ] 2>/dev/null; then
+        echo "Invalid PGID: $PGID. Must be between 1 and 65534"
+        exit 1
+    fi
 fi
 
 if ! echo "{
