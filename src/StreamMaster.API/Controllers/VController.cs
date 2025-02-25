@@ -49,16 +49,16 @@ public class VsController(ILogger<VsController> logger, IProfileService profileS
 
             StreamResult streamResult = await videoService.AddClientToChannelAsync(HttpContext, streamGroupId, streamGroupProfileId, smChannelId, cancellationToken);
 
-            if (streamResult.ClientConfiguration == null)
-            {
-                logger.LogWarning("Channel with ChannelId {channelId} not found or failed. Name: {name}", smChannelId, streamResult.ClientConfiguration?.SMChannel.Name ?? "Unknown");
-                return NotFound();
-            }
-
             if (!string.IsNullOrEmpty(streamResult.RedirectUrl))
             {
                 logger.LogInformation("Channel with ChannelId {channelId} is redirecting to {redirectUrl}", smChannelId, streamResult.RedirectUrl);
                 return Redirect(streamResult.RedirectUrl);
+            }
+
+            if (streamResult.ClientConfiguration == null)
+            {
+                logger.LogWarning("Channel with ChannelId {channelId} not found or failed. Name: {name}", smChannelId, streamResult.ClientConfiguration?.SMChannel.Name ?? "Unknown");
+                return NotFound();
             }
 
             // Register client stopped event
