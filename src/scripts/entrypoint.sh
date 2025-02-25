@@ -3,6 +3,19 @@
 user_name="nonRootUser"
 group_name="nonRootGroup"
 
+# Directories to create
+declare -a dirs=(
+    "/config/Cache"
+    "/config/Logs"
+    "/config/PlayLists/EPG"
+    "/config/PlayLists/M3U"
+    "/config/HLS"
+    "/app/wwwroot"
+    "$PGDATA"
+    "$BACKUP_DIR"
+    "$RESTORE_DIR"
+)
+
 . /env.sh
 
 # Validate PUID/PGID before proceeding
@@ -20,6 +33,12 @@ echo "{
   \"defaultPort\": $DEFAULT_PORT,
   \"defaultBaseUrl\": \"${BASE_URL}\"
 }" >/app/wwwroot/config.json
+
+# Safe directory creation function
+safe_mkdir() {
+    local dir="$1"
+    mkdir -p "$dir" 2>/dev/null || echo "Failed to create directory $dir"
+}
 
 # Function to check if a specific MigrationId exists in the __EFMigrationsHistory table
 check_migration_exists() {
@@ -204,12 +223,11 @@ if [ "$PGID" -ne 0 ]; then
 fi
 
 rm -rf /config/hls
-mkdir -p /config/Cache
-mkdir -p /config/Logs
-mkdir -p /config/PlayLists/EPG
-mkdir -p /config/PlayLists/M3U
-mkdir -p /config/HLS
-mkdir -p $PGDATA
+
+# Create all required directories
+for dir in "${dirs[@]}"; do
+    safe_mkdir "$dir"
+done
 
 rename_directory /config/settings /config/Settings
 rename_directory /config/backups /config/Backups
@@ -284,9 +302,6 @@ else
     echo "Error: PostgreSQL is not ready."
     exit 1
 fi
-
-mkdir -p $BACKUP_DIR
-mkdir -p $RESTORE_DIR
 
 moveFilesAndDeleteDir /config/DB/Backup $BACKUP_DIR
 
