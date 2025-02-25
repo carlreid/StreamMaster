@@ -40,6 +40,13 @@ safe_mkdir() {
     mkdir -p "$dir" 2>/dev/null || echo "Failed to create directory $dir"
 }
 
+# Safe ownership change function
+safe_chown() {
+    local owner="$1"
+    local path="$2"
+    chown "$owner" "$path" 2>/dev/null || echo "Failed to change ownership of $path"
+}
+
 # Function to check if a specific MigrationId exists in the __EFMigrationsHistory table
 check_migration_exists() {
     local migration_id=$1
@@ -234,13 +241,29 @@ rename_directory /config/backups /config/Backups
 
 # Change ownership of the /app directory
 if [ "$PUID" -ne 0 ] || [ "$PGID" -ne 0 ]; then
-    echo "Changing ownership of /app to ${PUID:-0}:${PGID:-0}"
-    chown -R ${PUID:-0}:${PGID:-0} /app
-    echo "Changing ownership of /config to ${PUID:-0}:${PGID:-0}"
-    find /config -mindepth 1 -maxdepth 1 -type d -not -path '/config/tv-logos' -not -path '/config/DB' -exec chown -R ${PUID:-0}:${PGID:-0} {} \;
+    # Set ownership for main directories
+    safe_chown "${PUID:-0}:${PGID:-0}" "/app"
+
+    # Handle /config directory permissions
+    find /config -mindepth 1 -maxdepth 1 -type d \
+        -not -path '/config/tv-logos' \
+        -not -path '/config/DB' \
+        -exec safe_chown -R "${PUID:-0}:${PGID:-0}" {} \;
+
+    # Handle special directories
+    safe_chown "${PUID:-0}:${PGID:-0}" '/config/tv-logos'
+    safe_chown "${PUID:-0}:${PGID:-0}" "$BACKUP_DIR"
+    safe_chown "${PUID:-0}:${PGID:-0}" "$RESTORE_DIR"
 fi
 
-chown ${PUID:-0}:${PGID:-0} '/config/tv-logos' 2>/dev/null
+# Set specific permissions for backup/restore directories
+chmod 775 "$BACKUP_DIR"
+chmod 775 "$RESTORE_DIR"
+
+# Handle PostgreSQL permissions
+if [ "$POSTGRES_ISLOCAL" -eq 1 ] && [ "$POSTGRES_SET_PERMS" -eq 1 ]; then
+    safe_chown "postgres:postgres" "$PGDATA"
+fi
 
 # Pretty printing the configuration
 echo "Configuration:"
@@ -264,10 +287,6 @@ echo "OS:"
 echo "  User: ${PUID:-0} Group: ${PGID:-0}"
 echo "  User: postgres Group: postgres"
 echo "  UID: $(id -u postgres) GID: $(id -g postgres)"
-
-if [ "$POSTGRES_ISLOCAL" -eq 1 ] && [ "$POSTGRES_SET_PERMS" -eq 1 ]; then
-    chown -R postgres:postgres "$PGDATA"
-fi
 
 if [ "$POSTGRES_ISLOCAL" -eq 1 ]; then
     # Start the database
@@ -305,10 +324,8 @@ fi
 
 moveFilesAndDeleteDir /config/DB/Backup $BACKUP_DIR
 
-chown ${PUID:-0}:${PGID:-0} $BACKUP_DIR
-chown ${PUID:-0}:${PGID:-0} $RESTORE_DIR
-chmod 777 $BACKUP_DIR
-chmod 777 $RESTORE_DIR
+safe_chown "${PUID:-0}:${PGID:-0}" "$BACKUP_DIR"
+safe_chown "${PUID:-0}:${PGID:-0}" "$RESTORE_DIR"
 
 if [ "$PUID" -ne 0 ]; then
     if usermod -aG postgres "$user_name"; then
