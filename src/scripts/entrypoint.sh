@@ -47,6 +47,9 @@ safe_chown() {
     chown "$owner" "$path" 2>/dev/null || echo "Failed to change ownership of $path"
 }
 
+# Enable nullglob to handle empty directory cases safely
+shopt -s nullglob
+
 moveFilesAndDeleteDir() {
     local source_dir="$1"
     local destination_dir="$2"
