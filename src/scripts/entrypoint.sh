@@ -330,7 +330,7 @@ safe_chown "${PUID:-0}:${PGID:-0}" "$RESTORE_DIR"
 if [ "$PUID" -ne 0 ]; then
     if usermod -aG postgres "$user_name"; then
         echo "User $user_name added to group postgres successfully."
-        chmod -R 775 $PGDATA
+        chmod -R 775 "$PGDATA"
     else
         echo "Failed to add user $user_name to group postgres."
     fi
