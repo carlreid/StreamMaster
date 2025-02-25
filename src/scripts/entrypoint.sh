@@ -185,7 +185,10 @@ if [ "$PUID" -ne 0 ]; then
     if getent passwd $PUID >/dev/null 2>&1; then
         user_name=$(getent passwd $PUID | cut -d: -f1)
     else
-        useradd --uid $PUID -K UID_MIN=10 --comment "nonRootUser" --shell /bin/bash nonRootUser
+        useradd --uid $PUID -K UID_MIN=10 --comment "nonRootUser" --shell /bin/bash nonRootUser || {
+            echo "Failed to create user with PUID: $PUID"
+            exit 1
+        }
     fi
 fi
 
@@ -193,7 +196,10 @@ if [ "$PGID" -ne 0 ]; then
     if getent group $PGID >/dev/null 2>&1; then
         group_name=$(getent group $PGID | cut -d: -f1)
     else
-        addgroup --gid $PGID --force-badname "nonRootGroup"
+        addgroup --gid $PGID --force-badname "nonRootGroup" || {
+            echo "Failed to create group with PGID: $PGID"
+            exit 1
+        }
     fi
 fi
 
