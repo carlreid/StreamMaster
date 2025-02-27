@@ -26,7 +26,7 @@ export default function RootLayout({
 							</ClientOnly>
 						</Box>
 						<Sidebar />
-						<Box flex="1" overflowY="auto">
+						<Box flex="1" overflowY="auto" padding={6}>
 							{children}
 						</Box>
 					</Flex>
