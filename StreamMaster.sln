@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebUI", "WebUI", "{5592C993
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Util", "Util", "{C764D36C-BABE-44D9-94B1-43F00965E836}"
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "StreamMaster.WebUI", "StreamMaster.WebUI\StreamMaster.WebUI.esproj", "{4E685088-6492-455C-A345-499F839E6E87}"
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "StreamMaster.WebUI", "src\StreamMaster.WebUI\StreamMaster.WebUI.esproj", "{4E685088-6492-455C-A345-499F839E6E87}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{09387FAB-E6A5-4B48-90AD-85F301F1C719}"
 	ProjectSection(SolutionItems) = preProject
