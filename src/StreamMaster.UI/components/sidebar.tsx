@@ -5,7 +5,7 @@ import {
 	ClientOnly,
 	Flex,
 	IconButton,
-	Link,
+	Link as ChakraLink,
 	Skeleton,
 	type BoxProps,
 	type LinkProps,
@@ -22,6 +22,7 @@ import {
 } from "react-icons/fi";
 import { Tooltip } from "./ui/tooltip";
 import { useColorMode } from "./ui/color-mode";
+import NextLink from "next/link";
 
 interface NavItemProps {
 	icon: ReactElement;
@@ -69,7 +70,9 @@ const NavItem: React.FC<NavItemProps> = ({
 
 	return (
 		<Tooltip content={isCollapsed ? children : ""} disabled={!isCollapsed}>
-			<Link {...linkProps}>{content}</Link>
+			<ChakraLink asChild {...linkProps}>
+				<NextLink href={link}>{content}</NextLink>
+			</ChakraLink>
 		</Tooltip>
 	);
 };
