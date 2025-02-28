@@ -75,8 +75,8 @@ const IconSelector: React.FC<IconSelectorProps> = ({
 
 	const itemTemplate = (icon: CustomLogoDto) => {
 		let iconUrl = icon.Source;
-		if (!iconUrl.startsWith("http")) {
-			iconUrl = `${isDev ? `${baseHostURL}` : "/"}${iconUrl}`;
+		if (!iconUrl.startsWith("http") && isDev) {
+			iconUrl = baseHostURL + iconUrl;
 		}
 
 		return (
