@@ -801,6 +801,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash-es@npm:^4":
+  version: 4.17.12
+  resolution: "@types/lodash-es@npm:4.17.12"
+  dependencies:
+    "@types/lodash": "npm:*"
+  checksum: 10c0/5d12d2cede07f07ab067541371ed1b838a33edb3c35cb81b73284e93c6fd0c4bbeaefee984e69294bffb53f62d7272c5d679fdba8e595ff71e11d00f2601dde0
+  languageName: node
+  linkType: hard
+
+"@types/lodash@npm:*":
+  version: 4.17.16
+  resolution: "@types/lodash@npm:4.17.16"
+  checksum: 10c0/cf017901b8ab1d7aabc86d5189d9288f4f99f19a75caf020c0e2c77b8d4cead4db0d0b842d009b029339f92399f49f34377dd7c2721053388f251778b4c23534
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^22.13.5":
   version: 22.13.5
   resolution: "@types/node@npm:22.13.5"
@@ -1782,6 +1798,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dequal@npm:^2.0.3":
+  version: 2.0.3
+  resolution: "dequal@npm:2.0.3"
+  checksum: 10c0/f98860cdf58b64991ae10205137c0e97d384c3a4edc7f807603887b7c4b850af1224a33d88012009f150861cbee4fa2d322c4cc04b9313bee312e47f6ecaa888
+  languageName: node
+  linkType: hard
+
 "detect-libc@npm:^2.0.3":
   version: 2.0.3
   resolution: "detect-libc@npm:2.0.3"
@@ -1960,6 +1983,13 @@ __metadata:
   version: 1.2.4
   resolution: "lines-and-columns@npm:1.2.4"
   checksum: 10c0/3da6ee62d4cd9f03f5dc90b4df2540fb85b352081bee77fe4bbcd12c9000ead7f35e0a38b8d09a9bb99b13223446dd8689ff3c4959807620726d788701a83d2d
+  languageName: node
+  linkType: hard
+
+"lodash-es@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash-es@npm:4.17.21"
+  checksum: 10c0/fb407355f7e6cd523a9383e76e6b455321f0f153a6c9625e21a8827d10c54c2a2341bd2ae8d034358b60e07325e1330c14c224ff582d04612a46a4f0479ff2f2
   languageName: node
   linkType: hard
 
@@ -2383,9 +2413,11 @@ __metadata:
     "@biomejs/biome": "npm:1.9.4"
     "@chakra-ui/react": "npm:^3.8.1"
     "@emotion/react": "npm:^11.14.0"
+    "@types/lodash-es": "npm:^4"
     "@types/node": "npm:^22.13.5"
     "@types/react": "npm:^19.0.10"
     "@types/react-dom": "npm:^19.0.4"
+    lodash-es: "npm:^4.17.21"
     next: "npm:^15.2.0"
     next-themes: "npm:^0.4.4"
     openapi-fetch: "npm:^0.13.4"
@@ -2393,6 +2425,8 @@ __metadata:
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
     react-icons: "npm:^5.5.0"
+    swr: "npm:^2.3.2"
+    swr-openapi: "npm:^5.1.3"
     typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
@@ -2441,6 +2475,37 @@ __metadata:
   languageName: node
   linkType: hard
 
+"swr-openapi@npm:^5.1.3":
+  version: 5.1.3
+  resolution: "swr-openapi@npm:5.1.3"
+  dependencies:
+    openapi-typescript-helpers: "npm:^0.0.15"
+    type-fest: "npm:^4.31.0"
+  peerDependencies:
+    openapi-fetch: 0.13.4
+    openapi-typescript: 7.5.2
+    react: 18 || 19
+    swr: 2
+    typescript: ^5.x
+  peerDependenciesMeta:
+    openapi-typescript:
+      optional: true
+  checksum: 10c0/0dd2ac3b693947f5e1196ec623d5a696444b5cbb9dfd939cbcd0cf4e07c80716a887ad489d8e8a1ad1f921d162729d10288fa110efbe279157213426f5b00fc6
+  languageName: node
+  linkType: hard
+
+"swr@npm:^2.3.2":
+  version: 2.3.2
+  resolution: "swr@npm:2.3.2"
+  dependencies:
+    dequal: "npm:^2.0.3"
+    use-sync-external-store: "npm:^1.4.0"
+  peerDependencies:
+    react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/981d3138c1959f1f15ddb74ed3c98f34fbcae8e68ee1b0e6ce3af7e1fcf65ecdb3a2c525b42338cbcef0f7a992d41e1aeb3982501e86239e8aeef6c34fe3b580
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^2.4.0, tslib@npm:^2.8.0":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
@@ -2448,7 +2513,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"type-fest@npm:^4.7.1":
+"type-fest@npm:^4.31.0, type-fest@npm:^4.7.1":
   version: 4.36.0
   resolution: "type-fest@npm:4.36.0"
   checksum: 10c0/9257e309a61cfeaec754f45cee4892fe386233daabb3c3e4f990c9ca1a74d44e87166e5cdc12148ba87a350a54a7339b9168dcb478db591be297bf9882cf6634
@@ -2493,6 +2558,15 @@ __metadata:
   version: 1.0.1
   resolution: "uri-js-replace@npm:1.0.1"
   checksum: 10c0/0be6c972c84c316e29667628ce7b4ce4de7fc77cec9a514f70c4a3336eea8d1d783c71c9988ac5da333f0f6a85a04a7ae05a3c4aa43af6cd07b7a4d85c8d9f11
+  languageName: node
+  linkType: hard
+
+"use-sync-external-store@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "use-sync-external-store@npm:1.4.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/ec011a5055962c0f6b509d6e78c0b143f8cd069890ae370528753053c55e3b360d3648e76cfaa854faa7a59eb08d6c5fb1015e60ffde9046d32f5b2a295acea5
   languageName: node
   linkType: hard
 
