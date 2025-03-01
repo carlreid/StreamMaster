@@ -6,6 +6,7 @@ import {
 	Button,
 } from "@chakra-ui/react";
 import { apiClient } from "../../lib/api";
+import { useMutate } from "../../lib/use-api";
 
 interface ChannelSelectionActionBarProps {
 	selection: number[];
@@ -15,6 +16,8 @@ export const ChannelSelectionActionBar = ({
 	selection,
 }: ChannelSelectionActionBarProps) => {
 	const hasSelection = selection.length > 0;
+
+	const mutate = useMutate();
 
 	return (
 		<ActionBarRoot open={hasSelection}>
@@ -30,11 +33,12 @@ export const ChannelSelectionActionBar = ({
 					variant="outline"
 					size="sm"
 					color={"blue.500"}
-					onClick={() =>
+					onClick={async () => {
 						void apiClient.PATCH("/api/smchannels/autosetepg", {
 							body: { ids: selection },
-						})
-					}
+						});
+						await mutate(["/api/smchannels/getpagedsmchannels"]);
+					}}
 				>
 					Auto Set EPG
 				</Button>

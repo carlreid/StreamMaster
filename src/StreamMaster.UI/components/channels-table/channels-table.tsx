@@ -9,25 +9,39 @@ import { ChannelTableBody } from "./channels-table-body";
 import { ChannelTablePageSize } from "./channels-table-pagination-size";
 import { ChannelTablePagination } from "./channels-table-pagination";
 import { ChannelSelectionActionBar } from "./channels-table-action-bar";
+import { useApi } from "../../lib/use-api";
 
 interface ChannelsTableProps {
-	initialChannels: {
-		data: components["schemas"]["SMChannelDto"][];
-		totalItemCount: number;
-		pageNumber: number;
-		pageSize: number;
-		paginationPrefix: string;
-	} | null;
+	initialData?: components["schemas"]["PagedResponseOfSMChannelDto"];
+	pageNumber: number;
+	pageSize: number;
+	paginationPrefix: string;
 }
 
-export const ChannelsTable = ({ initialChannels }: ChannelsTableProps) => {
+export const ChannelsTable = (props: ChannelsTableProps) => {
 	const [selection, setSelection] = useState<number[]>([]);
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 
-	// Get current page from URL or fallback to initialChannels
-	const currentPage = initialChannels?.pageNumber || 1;
+	const currentPage = props.pageNumber || 1;
+	const pageSize = props.pageSize || 10;
+	const paginationPrefix = props.paginationPrefix || "";
+
+	const { data: channelsData, error } = useApi(
+		"/api/smchannels/getpagedsmchannels",
+		{
+			params: {
+				query: {
+					PageNumber: currentPage,
+					PageSize: pageSize,
+				},
+			},
+		},
+		{
+			fallbackData: props.initialData,
+		},
+	);
 
 	// Reset selection when page changes
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Want to reset selection when page changes
@@ -35,16 +49,15 @@ export const ChannelsTable = ({ initialChannels }: ChannelsTableProps) => {
 		setSelection([]);
 	}, [currentPage]);
 
-	if (!initialChannels || !initialChannels.data) {
+	if (error) {
+		return <div>Error loading channels</div>;
+	}
+
+	if (!channelsData) {
 		return <div>Loading...</div>;
 	}
 
-	const {
-		data: channels,
-		totalItemCount,
-		pageSize,
-		paginationPrefix,
-	} = initialChannels;
+	const { data: channels, totalItemCount } = channelsData;
 
 	const handlePageChange = (pageInfo: { page: number; pageSize: number }) => {
 		const params = new URLSearchParams(searchParams);
@@ -61,12 +74,12 @@ export const ChannelsTable = ({ initialChannels }: ChannelsTableProps) => {
 		<>
 			<Stack gap={4}>
 				<ChannelTableHeader
-					channels={channels}
+					channels={channels || []}
 					selection={selection}
 					setSelection={setSelection}
 				/>
 				<ChannelTableBody
-					channels={channels}
+					channels={channels || []}
 					selection={selection}
 					setSelection={setSelection}
 				/>
