@@ -21,6 +21,7 @@
     "target": "esnext",
     "allowSyntheticDefaultImports": true,
     "incremental": true,
+    "noUncheckedIndexedAccess": true,
     "customConditions": [
       "source"
     ],
