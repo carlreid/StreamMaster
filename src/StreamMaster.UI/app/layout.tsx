@@ -3,6 +3,7 @@ import Provider from "./provider";
 import Sidebar from "../components/sidebar";
 import { Box, ClientOnly, Flex, Skeleton } from "@chakra-ui/react";
 import { ColorModeButton } from "../components/ui/color-mode";
+import { Toaster } from "../components/ui/toaster";
 
 const inter = Inter({
 	subsets: ["latin"],
@@ -23,6 +24,7 @@ export default function RootLayout({
 						<Box pos="absolute" top="4" right="4">
 							<ClientOnly fallback={<Skeleton w="10" h="10" rounded="md" />}>
 								<ColorModeButton />
+								<Toaster />
 							</ClientOnly>
 						</Box>
 						<Sidebar />
