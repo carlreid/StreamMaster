@@ -1,10 +1,11 @@
-import { HStack, IconButton } from "@chakra-ui/react";
+import { Box, Dialog, HStack, IconButton } from "@chakra-ui/react";
 import { LuLink2, LuPencil, LuTrash, LuWandSparkles } from "react-icons/lu";
 import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
 import type { components } from "../../lib/api.d";
 import { useState } from "react";
 import { toaster } from "../ui/toaster";
+import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
 
 interface ChannelRowActionsProps {
 	channel: components["schemas"]["SMChannelDto"];
@@ -63,6 +64,10 @@ export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 		return handleAction(
 			"delete",
 			async () => {
+				channel.id &&
+					apiClient.DELETE("/api/smchannels/deletesmchannel", {
+						body: { smChannelId: channel.id },
+					});
 				// Replace with actual delete implementation
 				await new Promise((resolve) => setTimeout(resolve, 500));
 			},
@@ -135,18 +140,32 @@ export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 					<LuPencil />
 				</IconButton>
 			</Tooltip>
+
 			<Tooltip content="Delete Channel">
-				<IconButton
-					size={"2xs"}
-					aria-label="Delete Channel"
-					color={"red.500"}
-					variant={"outline"}
-					loading={isLoading === "delete"}
-					onClick={handleDeleteChannel}
-				>
-					<LuTrash />
-				</IconButton>
+				<Box>
+					<ConfirmationDialog
+						title="Delete Channel"
+						description={`Are you sure you want to delete "${channel.name}"? It can be added from available Streams.`}
+						confirmText="Delete"
+						cancelText="Cancel"
+						onConfirm={handleDeleteChannel}
+						variant="warning"
+						isLoading={isLoading === "delete"}
+						trigger={
+							<IconButton
+								size={"2xs"}
+								aria-label="Delete Channel"
+								color={"red.500"}
+								variant={"outline"}
+								loading={false}
+							>
+								<LuTrash />
+							</IconButton>
+						}
+					/>
+				</Box>
 			</Tooltip>
+
 			<Tooltip content="Get Channel Link">
 				<IconButton
 					size={"2xs"}
