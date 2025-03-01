@@ -24,13 +24,12 @@ export default async function ChannelsTableWrapper({
 		},
 	);
 
-	const channelsData = {
-		data: pagedChannels.data?.data || [],
-		totalItemCount: pagedChannels.data?.totalItemCount || 0,
-		pageNumber: page,
-		pageSize: pageSize,
-		paginationPrefix,
-	};
-
-	return <ChannelsTable initialChannels={channelsData} />;
+	return (
+		<ChannelsTable
+			initialData={pagedChannels.data}
+			pageNumber={page}
+			pageSize={pageSize}
+			paginationPrefix={paginationPrefix}
+		/>
+	);
 }

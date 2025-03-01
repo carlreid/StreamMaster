@@ -1,4 +1,4 @@
-import { Box, Dialog, HStack, IconButton } from "@chakra-ui/react";
+import { Box, HStack, IconButton } from "@chakra-ui/react";
 import { LuLink2, LuPencil, LuTrash, LuWandSparkles } from "react-icons/lu";
 import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
@@ -6,6 +6,7 @@ import type { components } from "../../lib/api.d";
 import { useState } from "react";
 import { toaster } from "../ui/toaster";
 import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
+import { useMutate } from "../../lib/use-api";
 
 interface ChannelRowActionsProps {
 	channel: components["schemas"]["SMChannelDto"];
@@ -13,6 +14,7 @@ interface ChannelRowActionsProps {
 
 export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 	const [isLoading, setIsLoading] = useState<string | null>(null);
+	const mutate = useMutate();
 
 	const handleAction = async (
 		actionType: string,
@@ -64,12 +66,12 @@ export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 		return handleAction(
 			"delete",
 			async () => {
-				channel.id &&
-					apiClient.DELETE("/api/smchannels/deletesmchannel", {
+				if (channel.id) {
+					await apiClient.DELETE("/api/smchannels/deletesmchannel", {
 						body: { smChannelId: channel.id },
 					});
-				// Replace with actual delete implementation
-				await new Promise((resolve) => setTimeout(resolve, 500));
+					await mutate(["/api/smchannels/getpagedsmchannels"]);
+				}
 			},
 			{
 				title: "Channel Deleted",
