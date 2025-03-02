@@ -1,5 +1,5 @@
 import { Box, HStack, IconButton } from "@chakra-ui/react";
-import { LuTrash, LuWandSparkles } from "react-icons/lu";
+import { LuLink2, LuTrash } from "react-icons/lu";
 import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
 import type { components } from "../../lib/api.d";
@@ -8,11 +8,11 @@ import { toaster } from "../ui/toaster";
 import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
 import { useMutate } from "../../lib/use-api";
 
-interface ChannelRowActionsProps {
-	channel: components["schemas"]["SMChannelDto"];
+interface StreamRowActionsProps {
+	stream: components["schemas"]["SMStreamDto"];
 }
 
-export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
+export const StreamRowActions = ({ stream }: StreamRowActionsProps) => {
 	const [isLoading, setIsLoading] = useState<string | null>(null);
 	const mutate = useMutate();
 
@@ -44,69 +44,72 @@ export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 		}
 	};
 
-	const handleDeleteChannel = () => {
+	const handleDeleteStream = () => {
 		return handleAction(
 			"delete",
 			async () => {
-				if (channel.id) {
-					await apiClient.DELETE("/api/smchannels/deletesmchannel", {
-						body: { smChannelId: channel.id },
+				if (stream.id) {
+					await apiClient.DELETE("/api/smstreams/deletesmstream", {
+						body: { smStreamId: stream.id },
 					});
-					await mutate(["/api/smchannels/getpagedsmchannels"]);
+					await mutate(["/api/smstreams/getpagedsmstreams"]);
 				}
 			},
 			{
-				title: "Channel Deleted",
-				description: `Channel "${channel.name}" was successfully deleted.`,
+				title: "Stream Deleted",
+				description: `Stream "${stream.name}" was successfully deleted.`,
 			},
 			{
 				title: "Deletion Failed",
-				description: "Failed to delete channel. Please try again.",
+				description: "Failed to delete stream. Please try again.",
 			},
 		);
 	};
 
-	const handleAutoSetEpg = () => {
-		if (!channel.id) return;
-
+	const handleGetStreamLink = () => {
 		return handleAction(
-			"autoSetEpg",
+			"getLink",
 			async () => {
-				await apiClient.PATCH("/api/smchannels/autosetepg", {
-					// biome-ignore lint/style/noNonNullAssertion: Channel ID is guaranteed to be non-null, it is checked earlier in code flow
-					body: { ids: [channel.id!] },
-				});
+				if (stream.url) {
+					navigator.clipboard.writeText(stream.url);
+				} else {
+					throw new Error(
+						`Failed to get stream link. Stream details ${JSON.stringify(stream, null, 2)}`,
+						{ cause: "URL not found" },
+					);
+				}
 			},
 			{
-				title: "EPG Updated",
-				description: `EPG for "${channel.name}" was automatically set.`,
+				title: "Link Copied",
+				description: "Stream link copied to clipboard.",
 			},
 			{
-				title: "EPG Update Failed",
-				description: "Failed to automatically set EPG. Please try again.",
+				title: "Failed to Get Link",
+				description: "Could not retrieve stream link. Please try again.",
 			},
 		);
 	};
 
 	return (
 		<HStack gap={1}>
-			<Tooltip content="Delete Channel">
+			<Tooltip content="Delete Stream">
 				<Box>
 					<ConfirmationDialog
-						title="Delete Channel"
-						description={`Are you sure you want to delete "${channel.name}"? It can be added from available Streams.`}
+						title="Delete Stream"
+						description={`Are you sure you want to delete "${stream.name}"? It can be added from available Streams.`}
 						confirmText="Delete"
 						cancelText="Cancel"
-						onConfirm={handleDeleteChannel}
+						onConfirm={handleDeleteStream}
 						variant="warning"
 						isLoading={isLoading === "delete"}
 						trigger={
 							<IconButton
 								size={"2xs"}
-								aria-label="Delete Channel"
+								aria-label="Delete Stream"
 								color={"red.500"}
 								variant={"outline"}
 								loading={false}
+								disabled={!stream.needsDelete}
 							>
 								<LuTrash />
 							</IconButton>
@@ -115,16 +118,17 @@ export const ChannelRowActions = ({ channel }: ChannelRowActionsProps) => {
 				</Box>
 			</Tooltip>
 
-			<Tooltip content="Auto Set EPG">
+			<Tooltip content="Get Stream Link">
 				<IconButton
 					size={"2xs"}
-					aria-label="Auto Set EPG"
-					color={"orange.500"}
+					aria-label="Stream Link"
+					color={"green.500"}
 					variant={"outline"}
-					loading={isLoading === "autoSetEpg"}
-					onClick={handleAutoSetEpg}
+					loading={isLoading === "getLink"}
+					onClick={handleGetStreamLink}
+					disabled={!stream.url}
 				>
-					<LuWandSparkles />
+					<LuLink2 />
 				</IconButton>
 			</Tooltip>
 		</HStack>

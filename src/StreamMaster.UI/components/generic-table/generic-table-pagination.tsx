@@ -6,19 +6,19 @@ import {
 	PaginationRoot,
 } from "../ui/pagination";
 
-interface ChannelTablePaginationProps {
+interface GenericTablePaginationProps {
 	totalItemCount: number;
 	pageSize: number;
 	currentPage: number;
 	onPageChange: (pageInfo: { page: number; pageSize: number }) => void;
 }
 
-export const ChannelTablePagination = ({
+export const GenericTablePagination = ({
 	totalItemCount,
 	pageSize,
 	currentPage,
 	onPageChange,
-}: ChannelTablePaginationProps) => {
+}: GenericTablePaginationProps) => {
 	return (
 		<PaginationRoot
 			count={totalItemCount}

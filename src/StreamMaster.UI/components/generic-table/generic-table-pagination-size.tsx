@@ -28,16 +28,16 @@ interface PageSizeOption {
 	disabled?: boolean;
 }
 
-interface ChannelTablePageSizeProps {
+interface GenericTablePageSizeProps {
 	pageSize: number;
 	currentPage: number;
 	onPageSizeChange: (newSize: number) => void;
 }
 
-export const ChannelTablePageSize = ({
+export const GenericTablePageSize = ({
 	pageSize,
 	onPageSizeChange,
-}: ChannelTablePageSizeProps) => {
+}: GenericTablePageSizeProps) => {
 	const [customPageSize, setCustomPageSize] = useState<number>(0);
 	const [selectedPageSize, setSelectedPageSize] = useState<string[]>([]);
 
