@@ -2261,6 +2261,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-virtuoso@npm:^4.12.5":
+  version: 4.12.5
+  resolution: "react-virtuoso@npm:4.12.5"
+  peerDependencies:
+    react: ">=16 || >=17 || >= 18 || >= 19"
+    react-dom: ">=16 || >=17 || >= 18 || >=19"
+  checksum: 10c0/a1470edd4546d0eb5d4281935f53e892d97cda0183e4cbdd3258df3a9518933e9fb5d2669f5feffba91da2d83a2d4e5338d84b4be9b65fd0856de376891666c2
+  languageName: node
+  linkType: hard
+
 "react@npm:^19.0.0":
   version: 19.0.0
   resolution: "react@npm:19.0.0"
@@ -2443,6 +2453,7 @@ __metadata:
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
     react-icons: "npm:^5.5.0"
+    react-virtuoso: "npm:^4.12.5"
     swr: "npm:^2.3.2"
     swr-openapi: "npm:^5.1.3"
     typescript: "npm:^5.7.3"
