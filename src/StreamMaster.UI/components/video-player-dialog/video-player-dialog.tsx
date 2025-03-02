@@ -11,10 +11,8 @@ import React, {
 import { Box, Button, Text, Flex, DialogCloseTrigger } from "@chakra-ui/react";
 import type { components } from "../../lib/api.d";
 import {
-	DialogActionTrigger,
 	DialogBody,
 	DialogContent,
-	DialogFooter,
 	DialogHeader,
 	DialogRoot,
 	DialogTitle,
@@ -78,10 +76,12 @@ export const VideoPlayerDialog = ({
 				playerRef.current.detachMediaElement();
 				playerRef.current.destroy();
 				playerRef.current = null;
+				console.log("Player destroyed");
 			}
 			if (videoRef.current) {
 				videoRef.current.src = "";
 				videoRef.current.load();
+				console.log("Video source removed");
 			}
 			setError("");
 			setIsAudioDisabled(false);
@@ -242,7 +242,6 @@ export const VideoPlayerDialog = ({
 			}, 100);
 			return () => clearTimeout(timer);
 		}
-		console.log("Modal closed - destroying player");
 		destroyPlayer();
 	}, [isOpen, destroyPlayer, initPlayer]);
 
