@@ -1,4 +1,4 @@
-import { Table } from "@chakra-ui/react";
+import { Box, Table } from "@chakra-ui/react";
 import type { components } from "../../lib/api.d";
 import { Checkbox } from "../ui/checkbox";
 import { StreamRowActions } from "./streams-table-row-actions";
@@ -35,7 +35,16 @@ export const StreamTableBody = ({
 							}}
 						/>
 					</Table.Cell>
-					<Table.Cell>{stream.name}</Table.Cell>
+					<Table.Cell wordBreak="break-word" overflow="hidden" maxWidth="60">
+						<Box
+							textOverflow={"ellipsis"}
+							width={"100%"}
+							overflow={"hidden"}
+							whiteSpace={"nowrap"}
+						>
+							{stream.name}
+						</Box>
+					</Table.Cell>
 					<Table.Cell>
 						{stream.channelMembership?.map((m) => m.name).join(", ")}
 					</Table.Cell>
