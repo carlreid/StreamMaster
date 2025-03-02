@@ -1,8 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
 	Button,
 	Input,
-	SimpleGrid,
 	Box,
 	Image,
 	Text,
@@ -27,6 +26,7 @@ import { useApi } from "../../lib/use-api";
 import { useColorModeValue } from "../ui/color-mode";
 import { InputGroup } from "../ui/input-group";
 import { LuX } from "react-icons/lu";
+import { Virtuoso } from "react-virtuoso";
 
 export interface NormalizedLogo {
 	type: "custom" | "standard";
@@ -63,6 +63,11 @@ export const LogoSelectorDialog = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedLogo, setSelectedLogo] = useState<NormalizedLogo | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const virtuosoRefs = {
+		all: useRef(null),
+		custom: useRef(null),
+		standard: useRef(null),
+	};
 
 	// Colors for selected logo highlight
 	const selectedBgColor = useColorModeValue("blue.50", "blue.900");
@@ -144,7 +149,72 @@ export const LogoSelectorDialog = ({
 		);
 	};
 
-	const renderLogoGrid = (logos: NormalizedLogo[]) => {
+	// Create rows of 4 logos each for virtualized rendering
+	const createLogoRows = (logos: NormalizedLogo[]) => {
+		const rows = [];
+		for (let i = 0; i < logos.length; i += 4) {
+			rows.push(logos.slice(i, i + 4));
+		}
+		return rows;
+	};
+
+	const renderLogoRow = (index: number, rowLogos: NormalizedLogo[]) => {
+		return (
+			<Flex key={index} gap={4} width="100%" marginBottom={4}>
+				{rowLogos.map((logo, logoIndex) => (
+					<Box
+						key={`${logo.type}-${index}-${logoIndex}`}
+						borderWidth="1px"
+						borderRadius="lg"
+						overflow="hidden"
+						cursor="pointer"
+						onClick={() => handleLogoSelect(logo)}
+						_hover={{ borderColor: "blue.500" }}
+						bg={isLogoSelected(logo) ? selectedBgColor : "transparent"}
+						borderColor={isLogoSelected(logo) ? selectedBorderColor : "inherit"}
+						boxShadow={isLogoSelected(logo) ? "md" : "none"}
+						p={2}
+						transition="all 0.2s"
+						flex="1"
+						maxWidth="calc(25% - 12px)"
+					>
+						<Image
+							src={logo.url}
+							alt={logo.name}
+							maxH="100px"
+							mx="auto"
+							width="100%"
+							objectFit="scale-down"
+						/>
+						<Text fontSize="sm" mt={2} textAlign="center" title={logo.name}>
+							{logo.name}
+						</Text>
+						<Text fontSize="xs" color="gray.500" textAlign="center">
+							{logo.type === "custom" ? "Custom" : "Standard"}
+						</Text>
+					</Box>
+				))}
+				{/* Fill empty slots with placeholder boxes to maintain grid structure */}
+				{Array(4 - rowLogos.length)
+					.fill(0)
+					.map((_, i) => (
+						<Box
+							key={`empty-${index}-${
+								// biome-ignore lint/suspicious/noArrayIndexKey: It's ok
+								i
+							}`}
+							flex="1"
+							maxWidth="calc(25% - 12px)"
+						/>
+					))}
+			</Flex>
+		);
+	};
+
+	const renderLogoGrid = (
+		logos: NormalizedLogo[],
+		tabKey: "all" | "custom" | "standard",
+	) => {
 		if (isLoading) {
 			return (
 				<Flex justify="center" align="center" height="100%" minHeight="200px">
@@ -161,33 +231,20 @@ export const LogoSelectorDialog = ({
 			);
 		}
 
+		const logoRows = createLogoRows(logos);
+
 		return (
-			<SimpleGrid columns={3} gap={4} mt={4}>
-				{logos.map((logo, index) => (
-					<Box
-						key={`${logo.type}-${index}`}
-						borderWidth="1px"
-						borderRadius="lg"
-						overflow="hidden"
-						cursor="pointer"
-						onClick={() => handleLogoSelect(logo)}
-						_hover={{ borderColor: "blue.500" }}
-						bg={isLogoSelected(logo) ? selectedBgColor : "transparent"}
-						borderColor={isLogoSelected(logo) ? selectedBorderColor : "inherit"}
-						boxShadow={isLogoSelected(logo) ? "md" : "none"}
-						p={2}
-						transition="all 0.2s"
-					>
-						<Image src={logo.url} alt={logo.name} maxH="100px" mx="auto" />
-						<Text fontSize="sm" mt={2} textAlign="center" title={logo.name}>
-							{logo.name}
-						</Text>
-						<Text fontSize="xs" color="gray.500" textAlign="center">
-							{logo.type === "custom" ? "Custom" : "Standard"}
-						</Text>
-					</Box>
-				))}
-			</SimpleGrid>
+			<Box height="100%" width="100%">
+				<Virtuoso
+					ref={virtuosoRefs[tabKey]}
+					style={{ height: "100%", width: "100%" }}
+					totalCount={logoRows.length}
+					itemContent={(index) =>
+						renderLogoRow(index, logoRows[index] as NormalizedLogo[])
+					}
+					overscan={5}
+				/>
+			</Box>
 		);
 	};
 
@@ -269,15 +326,15 @@ export const LogoSelectorDialog = ({
 								</Tabs.List>
 							</Box>
 
-							<Box flex="1" overflow="auto" pr={2}>
+							<Box flex="1" overflow="hidden" pr={2}>
 								<Tabs.Content value="all" height="100%">
-									{renderLogoGrid(allLogos)}
+									{renderLogoGrid(allLogos, "all")}
 								</Tabs.Content>
 								<Tabs.Content value="custom" height="100%">
-									{renderLogoGrid(filteredCustomLogos)}
+									{renderLogoGrid(filteredCustomLogos, "custom")}
 								</Tabs.Content>
 								<Tabs.Content value="standard" height="100%">
-									{renderLogoGrid(filteredStandardLogos)}
+									{renderLogoGrid(filteredStandardLogos, "standard")}
 								</Tabs.Content>
 							</Box>
 						</Tabs.Root>
