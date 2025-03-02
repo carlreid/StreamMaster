@@ -1821,6 +1821,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"es6-promise@npm:^4.2.5":
+  version: 4.2.8
+  resolution: "es6-promise@npm:4.2.8"
+  checksum: 10c0/2373d9c5e9a93bdd9f9ed32ff5cb6dd3dd785368d1c21e9bbbfd07d16345b3774ae260f2bd24c8f836a6903f432b4151e7816a7fa8891ccb4e1a55a028ec42c3
+  languageName: node
+  linkType: hard
+
 "escape-string-regexp@npm:^4.0.0":
   version: 4.0.0
   resolution: "escape-string-regexp@npm:4.0.0"
@@ -1999,6 +2006,16 @@ __metadata:
   dependencies:
     brace-expansion: "npm:^2.0.1"
   checksum: 10c0/3defdfd230914f22a8da203747c42ee3c405c39d4d37ffda284dac5e45b7e1f6c49aa8be606509002898e73091ff2a3bbfc59c2c6c71d4660609f63aa92f98e3
+  languageName: node
+  linkType: hard
+
+"mpegts.js@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "mpegts.js@npm:1.8.0"
+  dependencies:
+    es6-promise: "npm:^4.2.5"
+    webworkify-webpack: "github:xqq/webworkify-webpack"
+  checksum: 10c0/6e7873c916856c7499d13ab0c65eb5c6d8e2d8d1fab2fd472c9ec9191386c4fddad9bfa356dc30e0940ef2e5ed16e57438e19cfcd3225635c513fc0da522c396
   languageName: node
   linkType: hard
 
@@ -2418,6 +2435,7 @@ __metadata:
     "@types/react": "npm:^19.0.10"
     "@types/react-dom": "npm:^19.0.4"
     lodash-es: "npm:^4.17.21"
+    mpegts.js: "npm:^1.8.0"
     next: "npm:^15.2.0"
     next-themes: "npm:^0.4.4"
     openapi-fetch: "npm:^0.13.4"
@@ -2567,6 +2585,13 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/ec011a5055962c0f6b509d6e78c0b143f8cd069890ae370528753053c55e3b360d3648e76cfaa854faa7a59eb08d6c5fb1015e60ffde9046d32f5b2a295acea5
+  languageName: node
+  linkType: hard
+
+"webworkify-webpack@github:xqq/webworkify-webpack":
+  version: 2.1.5
+  resolution: "webworkify-webpack@https://github.com/xqq/webworkify-webpack.git#commit=24d1e719b4a6cac37a518b2bb10fe124527ef4ef"
+  checksum: 10c0/056f5bb3043f46f138b44b218245b1a21ce2712da047f654aafe1bef6ff64d0d8bc032a3083249462cd9bcc0a1f92fbdd803356f0eae1a26ab2cf4e0c16a9453
   languageName: node
   linkType: hard
 

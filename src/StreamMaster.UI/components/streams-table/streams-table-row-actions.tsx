@@ -1,5 +1,11 @@
-import { Box, HStack, IconButton } from "@chakra-ui/react";
-import { LuLink2, LuTrash } from "react-icons/lu";
+import {
+	Box,
+	ClientOnly,
+	HStack,
+	IconButton,
+	Skeleton,
+} from "@chakra-ui/react";
+import { LuLink2, LuPlay, LuTrash } from "react-icons/lu";
 import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
 import type { components } from "../../lib/api.d";
@@ -7,6 +13,7 @@ import { useState } from "react";
 import { toaster } from "../ui/toaster";
 import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
 import { useMutate } from "../../lib/use-api";
+import { VideoPlayerDialog } from "../video-player-dialog/video-player-dialog";
 
 interface StreamRowActionsProps {
 	stream: components["schemas"]["SMStreamDto"];
@@ -130,6 +137,25 @@ export const StreamRowActions = ({ stream }: StreamRowActionsProps) => {
 				>
 					<LuLink2 />
 				</IconButton>
+			</Tooltip>
+
+			{/* Add a section for playing video using VideoPlayerDialog */}
+			<Tooltip content="Play Stream">
+				<VideoPlayerDialog
+					stream={stream}
+					trigger={
+						<IconButton
+							size={"2xs"}
+							aria-label="Play Stream"
+							color={"blue.500"}
+							variant={"outline"}
+							loading={isLoading === "play"}
+							disabled={!stream.url}
+						>
+							<LuPlay />
+						</IconButton>
+					}
+				/>
 			</Tooltip>
 		</HStack>
 	);
