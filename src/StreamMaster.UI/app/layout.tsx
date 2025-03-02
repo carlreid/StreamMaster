@@ -4,6 +4,12 @@ import Sidebar from "../components/sidebar";
 import { Box, ClientOnly, Flex, Skeleton } from "@chakra-ui/react";
 import { ColorModeButton } from "../components/ui/color-mode";
 import { Toaster } from "../components/ui/toaster";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+	title: "Stream Master (v2)",
+	description: "Experimental version of the Stream Master dashboard.",
+};
 
 const inter = Inter({
 	subsets: ["latin"],
