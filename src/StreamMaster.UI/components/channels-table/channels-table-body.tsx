@@ -2,6 +2,10 @@ import { Table } from "@chakra-ui/react";
 import type { components } from "../../lib/api.d";
 import { Checkbox } from "../ui/checkbox";
 import { ChannelRowActions } from "./channels-table-row-actions";
+import { LazyLogoSelectorDialog } from "../logo-selector-dialog/lazy-logo-selector-dialog";
+import { apiClient } from "../../lib/api";
+import { toaster } from "../ui/toaster";
+import { useMutate } from "../../lib/use-api";
 
 interface ChannelTableBodyProps {
 	channels: components["schemas"]["SMChannelDto"][];
@@ -14,6 +18,32 @@ export const ChannelTableBody = ({
 	selection,
 	setSelection,
 }: ChannelTableBodyProps) => {
+	const mutate = useMutate();
+	const handleLogoSelect = async (
+		channelId: number,
+		logo: string,
+	): Promise<{ success: boolean; message: string }> => {
+		try {
+			await apiClient.PATCH("/api/smchannels/setsmchannellogo", {
+				body: {
+					smChannelId: channelId,
+					logo: logo,
+				},
+			});
+			await mutate(["/api/smchannels/getpagedsmchannels"]);
+
+			toaster.create({
+				title: "Logo updated",
+				description: "Logo has been updated successfully",
+				type: "success",
+			});
+			return { success: true, message: "Logo updated" };
+		} catch (e) {
+			console.error(e);
+			return { success: false, message: "Error updating logo" };
+		}
+	};
+
 	return (
 		<Table.Body>
 			{channels.map((channel) => (
@@ -37,13 +67,28 @@ export const ChannelTableBody = ({
 					</Table.Cell>
 					<Table.Cell>{channel.id}</Table.Cell>
 					<Table.Cell>
-						{channel.logo && (
-							<img
-								src={channel.logo}
-								alt={`${channel.name} logo`}
-								style={{ height: "24px", width: "auto" }}
-							/>
-						)}
+						<LazyLogoSelectorDialog
+							onSelectLogo={async (logo) => {
+								if (!channel.id) {
+									return {
+										success: false,
+										message: "Can't update logo for channel without ID",
+									};
+								}
+								return await handleLogoSelect(channel.id, logo.url);
+							}}
+							currentLogoUrl={channel.logo}
+							currentLogoDisplayName={channel.name}
+							trigger={
+								channel.logo && (
+									<img
+										src={channel.logo}
+										alt={`${channel.name} logo`}
+										style={{ height: "24px", width: "auto" }}
+									/>
+								)
+							}
+						/>
 					</Table.Cell>
 					<Table.Cell>{channel.name}</Table.Cell>
 					<Table.Cell>{channel.epgId}</Table.Cell>
