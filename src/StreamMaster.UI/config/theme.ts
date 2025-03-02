@@ -7,6 +7,7 @@ export const system = createSystem(defaultConfig, {
 				heading: { value: `'Figtree', sans-serif` },
 				body: { value: `'Figtree', sans-serif` },
 			},
+			colors: {},
 		},
 	},
 });
