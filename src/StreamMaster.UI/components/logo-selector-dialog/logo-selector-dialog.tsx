@@ -10,6 +10,7 @@ import {
 	Spinner,
 	Separator,
 	DialogActionTrigger,
+	IconButton,
 } from "@chakra-ui/react";
 import {
 	DialogBody,
@@ -24,6 +25,8 @@ import type { ReactNode } from "react";
 import { Tabs } from "@chakra-ui/react";
 import { useApi } from "../../lib/use-api";
 import { useColorModeValue } from "../ui/color-mode";
+import { InputGroup } from "../ui/input-group";
+import { LuX } from "react-icons/lu";
 
 export interface NormalizedLogo {
 	type: "custom" | "standard";
@@ -229,11 +232,25 @@ export const LogoSelectorDialog = ({
 						)}
 
 						<Box mb={4} flexShrink={0}>
-							<Input
-								placeholder="Search logos by name..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-							/>
+							<InputGroup
+								w="full"
+								endElement={
+									<IconButton
+										variant="ghost"
+										size="sm"
+										disabled={!searchQuery}
+										onClick={() => setSearchQuery("")}
+									>
+										<LuX />
+									</IconButton>
+								}
+							>
+								<Input
+									placeholder="Search logos by name..."
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+								/>
+							</InputGroup>
 						</Box>
 
 						<Tabs.Root
