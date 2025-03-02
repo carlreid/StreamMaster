@@ -1,25 +1,25 @@
 "use client";
 
-import { Flex, Stack, Table } from "@chakra-ui/react";
+import { Stack, Flex, Table } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { components } from "../../lib/api.d";
-import { ChannelTableHeader } from "./channels-table-header";
-import { ChannelTableBody } from "./channels-table-body";
-import { ChannelSelectionActionBar } from "./channels-table-action-bar";
-import { useApi } from "../../lib/use-api";
+import { StreamTableHeader } from "./streams-table-header";
+import { StreamTableBody } from "./streams-table-body";
 import { GenericTablePageSize } from "../generic-table/generic-table-pagination-size";
 import { GenericTablePagination } from "../generic-table/generic-table-pagination";
+import { StreamSelectionActionBar } from "./streams-table-action-bar";
+import { useApi } from "../../lib/use-api";
 
-interface ChannelsTableProps {
-	initialData?: components["schemas"]["PagedResponseOfSMChannelDto"];
+interface StreamsTableProps {
+	initialData?: components["schemas"]["PagedResponseOfSMStreamDto"];
 	pageNumber: number;
 	pageSize: number;
 	paginationPrefix: string;
 }
 
-export const ChannelsTable = (props: ChannelsTableProps) => {
-	const [selection, setSelection] = useState<number[]>([]);
+export const StreamsTable = (props: StreamsTableProps) => {
+	const [selection, setSelection] = useState<string[]>([]);
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -29,7 +29,7 @@ export const ChannelsTable = (props: ChannelsTableProps) => {
 	const paginationPrefix = props.paginationPrefix || "";
 
 	const { data: channelsData, error } = useApi(
-		"/api/smchannels/getpagedsmchannels",
+		"/api/smstreams/getpagedsmstreams",
 		{
 			params: {
 				query: {
@@ -73,13 +73,13 @@ export const ChannelsTable = (props: ChannelsTableProps) => {
 	return (
 		<Stack>
 			<Table.Root interactive stickyHeader size={"sm"}>
-				<ChannelTableHeader
-					channels={channels || []}
+				<StreamTableHeader
+					streams={channels || []}
 					selection={selection}
 					setSelection={setSelection}
 				/>
-				<ChannelTableBody
-					channels={channels || []}
+				<StreamTableBody
+					streams={channels || []}
 					selection={selection}
 					setSelection={setSelection}
 				/>
@@ -103,7 +103,7 @@ export const ChannelsTable = (props: ChannelsTableProps) => {
 				/>
 			</Flex>
 
-			<ChannelSelectionActionBar selection={selection} />
+			<StreamSelectionActionBar selection={selection} />
 		</Stack>
 	);
 };
