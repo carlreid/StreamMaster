@@ -1,6 +1,15 @@
-import { useState, useEffect } from "react";
-import { HStack, IconButton, Button, Stack } from "@chakra-ui/react";
+import { Button, HStack, IconButton, Stack } from "@chakra-ui/react";
+import { createListCollection } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 import { LuSettings } from "react-icons/lu";
+import { NumberInputField, NumberInputRoot } from "../ui/number-input";
+import {
+	PopoverBody,
+	PopoverContent,
+	PopoverRoot,
+	PopoverTitle,
+	PopoverTrigger,
+} from "../ui/popover";
 import {
 	SelectContent,
 	SelectItem,
@@ -9,15 +18,6 @@ import {
 	SelectTrigger,
 	SelectValueText,
 } from "../ui/select";
-import {
-	PopoverBody,
-	PopoverContent,
-	PopoverRoot,
-	PopoverTitle,
-	PopoverTrigger,
-} from "../ui/popover";
-import { NumberInputField, NumberInputRoot } from "../ui/number-input";
-import { createListCollection } from "@chakra-ui/react";
 
 // Predefined page size options
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 250];

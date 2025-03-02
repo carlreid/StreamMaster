@@ -2,27 +2,27 @@
 
 import {
 	Box,
+	type BoxProps,
+	Link as ChakraLink,
 	ClientOnly,
 	Flex,
-	IconButton,
-	Link as ChakraLink,
-	Skeleton,
-	type BoxProps,
-	type LinkProps,
-	Text,
 	HStack,
+	IconButton,
+	type LinkProps,
+	Skeleton,
+	Text,
 } from "@chakra-ui/react";
-import { useState, type ReactElement } from "react";
+import NextLink from "next/link";
+import { type ReactElement, useState } from "react";
 import {
-	FiMenu,
 	FiActivity,
-	FiSettings,
 	FiBookOpen,
+	FiMenu,
+	FiSettings,
 	FiVideo,
 } from "react-icons/fi";
-import { Tooltip } from "./ui/tooltip";
 import { useColorMode } from "./ui/color-mode";
-import NextLink from "next/link";
+import { Tooltip } from "./ui/tooltip";
 
 interface NavItemProps {
 	icon: ReactElement;

@@ -1,15 +1,15 @@
 "use client";
 
 import { Flex, Stack, Table } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { components } from "../../lib/api.d";
-import { ChannelTableHeader } from "./channels-table-header";
-import { ChannelTableBody } from "./channels-table-body";
-import { ChannelSelectionActionBar } from "./channels-table-action-bar";
 import { useApi } from "../../lib/use-api";
-import { GenericTablePageSize } from "../generic-table/generic-table-pagination-size";
 import { GenericTablePagination } from "../generic-table/generic-table-pagination";
+import { GenericTablePageSize } from "../generic-table/generic-table-pagination-size";
+import { ChannelSelectionActionBar } from "./channels-table-action-bar";
+import { ChannelTableBody } from "./channels-table-body";
+import { ChannelTableHeader } from "./channels-table-header";
 
 interface ChannelsTableProps {
 	initialData?: components["schemas"]["PagedResponseOfSMChannelDto"];

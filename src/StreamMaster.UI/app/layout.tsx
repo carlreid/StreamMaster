@@ -1,10 +1,10 @@
-import { Inter } from "next/font/google";
-import Provider from "./provider";
-import Sidebar from "../components/sidebar";
 import { Box, ClientOnly, Flex, Skeleton } from "@chakra-ui/react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import Sidebar from "../components/sidebar";
 import { ColorModeButton } from "../components/ui/color-mode";
 import { Toaster } from "../components/ui/toaster";
-import type { Metadata } from "next";
+import Provider from "./provider";
 
 export const metadata: Metadata = {
 	title: "Stream Master (v2)",

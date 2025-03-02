@@ -1,15 +1,15 @@
 "use client";
 
-import { Stack, Flex, Table } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Flex, Stack, Table } from "@chakra-ui/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { components } from "../../lib/api.d";
-import { StreamTableHeader } from "./streams-table-header";
-import { StreamTableBody } from "./streams-table-body";
-import { GenericTablePageSize } from "../generic-table/generic-table-pagination-size";
-import { GenericTablePagination } from "../generic-table/generic-table-pagination";
-import { StreamSelectionActionBar } from "./streams-table-action-bar";
 import { useApi } from "../../lib/use-api";
+import { GenericTablePagination } from "../generic-table/generic-table-pagination";
+import { GenericTablePageSize } from "../generic-table/generic-table-pagination-size";
+import { StreamSelectionActionBar } from "./streams-table-action-bar";
+import { StreamTableBody } from "./streams-table-body";
+import { StreamTableHeader } from "./streams-table-header";
 
 interface StreamsTableProps {
 	initialData?: components["schemas"]["PagedResponseOfSMStreamDto"];
