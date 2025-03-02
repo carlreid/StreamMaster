@@ -1,4 +1,5 @@
 import { Button, DialogActionTrigger, Text } from "@chakra-ui/react";
+import type { ReactNode } from "react";
 import {
 	DialogBody,
 	DialogCloseTrigger,
@@ -9,7 +10,6 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "../ui/dialog";
-import type { ReactNode } from "react";
 
 type ConfirmationVariant = "warning" | "danger" | "info";
 

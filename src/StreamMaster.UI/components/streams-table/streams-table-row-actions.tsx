@@ -1,18 +1,12 @@
-import {
-	Box,
-	ClientOnly,
-	HStack,
-	IconButton,
-	Skeleton,
-} from "@chakra-ui/react";
+import { Box, HStack, IconButton } from "@chakra-ui/react";
+import { useState } from "react";
 import { LuLink2, LuPlay, LuTrash } from "react-icons/lu";
-import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
 import type { components } from "../../lib/api.d";
-import { useState } from "react";
-import { toaster } from "../ui/toaster";
-import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
 import { useMutate } from "../../lib/use-api";
+import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
+import { toaster } from "../ui/toaster";
+import { Tooltip } from "../ui/tooltip";
 import { VideoPlayerDialog } from "../video-player-dialog/video-player-dialog";
 
 interface StreamRowActionsProps {

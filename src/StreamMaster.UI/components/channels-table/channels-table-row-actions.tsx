@@ -1,12 +1,12 @@
 import { Box, HStack, IconButton } from "@chakra-ui/react";
+import { useState } from "react";
 import { LuTrash, LuWandSparkles } from "react-icons/lu";
-import { Tooltip } from "../ui/tooltip";
 import { apiClient } from "../../lib/api";
 import type { components } from "../../lib/api.d";
-import { useState } from "react";
-import { toaster } from "../ui/toaster";
-import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
 import { useMutate } from "../../lib/use-api";
+import { ConfirmationDialog } from "../confirmation-dialog/confirmation-dialog";
+import { toaster } from "../ui/toaster";
+import { Tooltip } from "../ui/tooltip";
 
 interface ChannelRowActionsProps {
 	channel: components["schemas"]["SMChannelDto"];

@@ -1,11 +1,11 @@
 import { Table } from "@chakra-ui/react";
-import type { components } from "../../lib/api.d";
-import { Checkbox } from "../ui/checkbox";
-import { ChannelRowActions } from "./channels-table-row-actions";
-import { LazyLogoSelectorDialog } from "../logo-selector-dialog/lazy-logo-selector-dialog";
 import { apiClient } from "../../lib/api";
-import { toaster } from "../ui/toaster";
+import type { components } from "../../lib/api.d";
 import { useMutate } from "../../lib/use-api";
+import { LazyLogoSelectorDialog } from "../logo-selector-dialog/lazy-logo-selector-dialog";
+import { Checkbox } from "../ui/checkbox";
+import { toaster } from "../ui/toaster";
+import { ChannelRowActions } from "./channels-table-row-actions";
 
 interface ChannelTableBodyProps {
 	channels: components["schemas"]["SMChannelDto"][];

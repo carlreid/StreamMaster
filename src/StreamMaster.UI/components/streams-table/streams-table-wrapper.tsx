@@ -7,13 +7,13 @@ interface WrapperProps {
 	paginationPrefix: string;
 }
 
-export default async function ChannelsTableWrapper({
+export async function StreamsTableWrapper({
 	page,
 	pageSize,
 	paginationPrefix,
 }: WrapperProps) {
 	const pagedChannels = await apiClient.GET(
-		"/api/smchannels/getpagedsmchannels",
+		"/api/smstreams/getpagedsmstreams",
 		{
 			params: {
 				query: {

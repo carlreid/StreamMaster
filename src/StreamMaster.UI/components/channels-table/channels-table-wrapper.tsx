@@ -7,7 +7,7 @@ interface WrapperProps {
 	paginationPrefix: string;
 }
 
-export default async function ChannelsTableWrapper({
+export async function ChannelsTableWrapper({
 	page,
 	pageSize,
 	paginationPrefix,

@@ -1,6 +1,6 @@
 import { Box, Heading, SimpleGrid } from "@chakra-ui/react";
-import ChannelsTableWrapper from "../../components/channels-table/channels-table-wrapper";
-import StreamsTableWrapper from "../../components/streams-table/streams-table-wrapper";
+import { ChannelsTableWrapper } from "../../components/channels-table/channels-table-wrapper";
+import { StreamsTableWrapper } from "../../components/streams-table/streams-table-wrapper";
 
 interface StreamsPageSearchParams {
 	channelsPage?: string;
@@ -10,8 +10,8 @@ interface StreamsPageSearchParams {
 }
 
 interface PageProps {
-	params: { [key: string]: string };
-	searchParams?: StreamsPageSearchParams;
+	params: Promise<{ [key: string]: string }>;
+	searchParams?: Promise<StreamsPageSearchParams>;
 }
 
 export default async function StreamsPage({ searchParams }: PageProps) {

@@ -1,16 +1,22 @@
-import { useState, useMemo, useRef } from "react";
 import {
-	Button,
-	Input,
 	Box,
-	Image,
-	Text,
-	Flex,
-	Spinner,
-	Separator,
+	Button,
 	DialogActionTrigger,
+	Flex,
 	IconButton,
+	Image,
+	Input,
+	Separator,
+	Spinner,
+	Text,
 } from "@chakra-ui/react";
+import { Tabs } from "@chakra-ui/react";
+import { useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { LuX } from "react-icons/lu";
+import { Virtuoso } from "react-virtuoso";
+import { useApi } from "../../lib/use-api";
+import { useColorModeValue } from "../ui/color-mode";
 import {
 	DialogBody,
 	DialogContent,
@@ -20,13 +26,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "../ui/dialog";
-import type { ReactNode } from "react";
-import { Tabs } from "@chakra-ui/react";
-import { useApi } from "../../lib/use-api";
-import { useColorModeValue } from "../ui/color-mode";
 import { InputGroup } from "../ui/input-group";
-import { LuX } from "react-icons/lu";
-import { Virtuoso } from "react-virtuoso";
 
 export interface NormalizedLogo {
 	type: "custom" | "standard";

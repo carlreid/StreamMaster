@@ -1,14 +1,16 @@
 "use client";
 
-import React, {
+import { Box, Button, DialogCloseTrigger, Flex, Text } from "@chakra-ui/react";
+// Import only the types, not the actual module
+import type mpegts from "mpegts.js";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
 	useRef,
 	useState,
-	useEffect,
-	useCallback,
-	useMemo,
-	type ReactNode,
 } from "react";
-import { Box, Button, Text, Flex, DialogCloseTrigger } from "@chakra-ui/react";
 import type { components } from "../../lib/api.d";
 import {
 	DialogBody,
@@ -18,8 +20,6 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "../ui/dialog";
-// Import only the types, not the actual module
-import type mpegts from "mpegts.js";
 
 interface PlaySMStreamProperties {
 	readonly stream: components["schemas"]["SMStreamDto"];
