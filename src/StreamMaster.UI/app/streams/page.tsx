@@ -18,10 +18,10 @@ export default async function StreamsPage({ searchParams }: PageProps) {
 	const waitedSearchParams = await searchParams;
 
 	const channelsPage = Number(waitedSearchParams?.channelsPage) || 1;
-	const channelsPageSize = Number(waitedSearchParams?.channelsPageSize) || 10;
+	const channelsPageSize = Number(waitedSearchParams?.channelsPageSize) || 25;
 
 	const streamsPage = Number(waitedSearchParams?.streamsPage) || 1;
-	const streamsPageSize = Number(waitedSearchParams?.streamsPageSize) || 10;
+	const streamsPageSize = Number(waitedSearchParams?.streamsPageSize) || 25;
 
 	return (
 		<SimpleGrid columns={2} gap={4}>
