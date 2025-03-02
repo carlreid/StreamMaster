@@ -72,7 +72,7 @@ export const StreamsTable = (props: StreamsTableProps) => {
 
 	return (
 		<Stack>
-			<Table.Root interactive stickyHeader showColumnBorder size={"sm"}>
+			<Table.Root showColumnBorder size={"sm"}>
 				<StreamTableHeader
 					streams={channels || []}
 					selection={selection}

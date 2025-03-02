@@ -72,7 +72,7 @@ export const ChannelsTable = (props: ChannelsTableProps) => {
 
 	return (
 		<Stack>
-			<Table.Root interactive stickyHeader showColumnBorder size={"sm"}>
+			<Table.Root showColumnBorder size={"sm"}>
 				<ChannelTableHeader
 					channels={channels || []}
 					selection={selection}

@@ -1,27 +1,15 @@
-"use client";
-
 import {
 	Box,
 	type BoxProps,
 	Link as ChakraLink,
-	ClientOnly,
 	Flex,
 	HStack,
-	IconButton,
 	type LinkProps,
-	Skeleton,
 	Text,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
-import { type ReactElement, useState } from "react";
-import {
-	FiActivity,
-	FiBookOpen,
-	FiMenu,
-	FiSettings,
-	FiVideo,
-} from "react-icons/fi";
-import { useColorMode } from "./ui/color-mode";
+import type { ReactElement } from "react";
+import { FiActivity, FiBookOpen, FiSettings, FiVideo } from "react-icons/fi";
 import { Tooltip } from "./ui/tooltip";
 
 interface NavItemProps {
@@ -34,6 +22,7 @@ interface NavItemProps {
 
 interface SidebarProps extends BoxProps {
 	// Add any additional props here
+	initialCollapsed?: boolean;
 }
 
 const NavItem: React.FC<NavItemProps> = ({
@@ -77,82 +66,76 @@ const NavItem: React.FC<NavItemProps> = ({
 	);
 };
 
-const Sidebar: React.FC<SidebarProps> = (props) => {
-	const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-	const { colorMode } = useColorMode();
+const Sidebar: React.FC<SidebarProps> = ({
+	initialCollapsed = false,
+	...props
+}) => {
+	const isCollapsed = false;
 
-	const bg = colorMode === "dark" ? "gray.800" : "white";
-	const borderColor = colorMode === "dark" ? "gray.700" : "gray.200";
+	// Use a default value during SSR to prevent layout shift
+	const sidebarWidth =
+		isCollapsed === null
+			? initialCollapsed
+				? "60px"
+				: "240px"
+			: isCollapsed
+				? "60px"
+				: "240px";
 
 	return (
-		<ClientOnly
-			fallback={
-				<Skeleton boxSize="8" w={isCollapsed ? "60px" : "240px"} minH="100vh" />
-			}
+		<Box
+			minH="100vh"
+			borderRight="1px"
+			w={sidebarWidth}
+			transition="width 0.2s ease"
+			{...props}
 		>
-			<Box
-				minH="100vh"
-				bg={bg}
-				borderRight="1px"
-				borderRightColor={borderColor}
-				w={isCollapsed ? "60px" : "240px"}
-				transition="width 0.2s ease"
-				{...props}
+			<Flex
+				h="20"
+				alignItems="center"
+				justifyContent={isCollapsed ? "center" : "space-between"}
+				px={isCollapsed ? 0 : 4}
 			>
-				<Flex
-					h="20"
-					alignItems="center"
-					justifyContent={isCollapsed ? "center" : "space-between"}
-					px={isCollapsed ? 0 : 4}
+				<Text hidden={isCollapsed || false}>StreamMaster</Text>
+			</Flex>
+			<Flex
+				direction="column"
+				alignContent={"center"}
+				justifyContent={"center"}
+				gap={1}
+				px={isCollapsed ? 1 : 4}
+			>
+				<NavItem
+					icon={<FiVideo size={20} />}
+					isCollapsed={isCollapsed ?? initialCollapsed}
+					link="/streams"
 				>
-					<Text hidden={isCollapsed}>StreamMaster</Text>
-					<IconButton
-						aria-label="Toggle Sidebar"
-						variant="ghost"
-						onClick={() => setIsCollapsed(!isCollapsed)}
-					>
-						<FiMenu />
-					</IconButton>
-				</Flex>
-				<Flex
-					direction="column"
-					alignContent={"center"}
-					justifyContent={"center"}
-					gap={1}
-					px={isCollapsed ? 1 : 4}
+					Streams
+				</NavItem>
+				<NavItem
+					icon={<FiActivity size={20} />}
+					isCollapsed={isCollapsed ?? initialCollapsed}
+					link="/status"
 				>
-					<NavItem
-						icon={<FiVideo size={20} />}
-						isCollapsed={isCollapsed}
-						link="/streams"
-					>
-						Streams
-					</NavItem>
-					<NavItem
-						icon={<FiActivity size={20} />}
-						isCollapsed={isCollapsed}
-						link="/status"
-					>
-						Status
-					</NavItem>
-					<NavItem
-						icon={<FiSettings size={20} />}
-						isCollapsed={isCollapsed}
-						link="/settings"
-					>
-						Settings
-					</NavItem>
-					<NavItem
-						icon={<FiBookOpen size={20} />}
-						isCollapsed={isCollapsed}
-						link="https://carlreid.github.io/StreamMaster/"
-						isExternal={true}
-					>
-						Wiki
-					</NavItem>
-				</Flex>
-			</Box>
-		</ClientOnly>
+					Status
+				</NavItem>
+				<NavItem
+					icon={<FiSettings size={20} />}
+					isCollapsed={isCollapsed ?? initialCollapsed}
+					link="/settings"
+				>
+					Settings
+				</NavItem>
+				<NavItem
+					icon={<FiBookOpen size={20} />}
+					isCollapsed={isCollapsed ?? initialCollapsed}
+					link="https://carlreid.github.io/StreamMaster/"
+					isExternal={true}
+				>
+					Wiki
+				</NavItem>
+			</Flex>
+		</Box>
 	);
 };
 

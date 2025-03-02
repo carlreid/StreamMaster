@@ -1,11 +1,8 @@
-import { Table } from "@chakra-ui/react";
-import { apiClient } from "../../lib/api";
+import { IconButton, Table, Image } from "@chakra-ui/react";
 import type { components } from "../../lib/api.d";
-import { useMutate } from "../../lib/use-api";
-import { LazyLogoSelectorDialog } from "../logo-selector-dialog/lazy-logo-selector-dialog";
 import { Checkbox } from "../ui/checkbox";
-import { toaster } from "../ui/toaster";
 import { ChannelRowActions } from "./channels-table-row-actions";
+import { useLogoDialog } from "../logo-selector-dialog/logo-selector-dialog-context";
 
 interface ChannelTableBodyProps {
 	channels: components["schemas"]["SMChannelDto"][];
@@ -18,31 +15,7 @@ export const ChannelTableBody = ({
 	selection,
 	setSelection,
 }: ChannelTableBodyProps) => {
-	const mutate = useMutate();
-	const handleLogoSelect = async (
-		channelId: number,
-		logo: string,
-	): Promise<{ success: boolean; message: string }> => {
-		try {
-			await apiClient.PATCH("/api/smchannels/setsmchannellogo", {
-				body: {
-					smChannelId: channelId,
-					logo: logo,
-				},
-			});
-			await mutate(["/api/smchannels/getpagedsmchannels"]);
-
-			toaster.create({
-				title: "Logo updated",
-				description: "Logo has been updated successfully",
-				type: "success",
-			});
-			return { success: true, message: "Logo updated" };
-		} catch (e) {
-			console.error(e);
-			return { success: false, message: "Error updating logo" };
-		}
-	};
+	const { openLogoDialog } = useLogoDialog();
 
 	return (
 		<Table.Body>
@@ -66,29 +39,36 @@ export const ChannelTableBody = ({
 						/>
 					</Table.Cell>
 					<Table.Cell>{channel.id}</Table.Cell>
-					<Table.Cell>
-						<LazyLogoSelectorDialog
-							onSelectLogo={async (logo) => {
-								if (!channel.id) {
-									return {
-										success: false,
-										message: "Can't update logo for channel without ID",
-									};
-								}
-								return await handleLogoSelect(channel.id, logo.url);
-							}}
-							currentLogoUrl={channel.logo}
-							currentLogoDisplayName={channel.name}
-							trigger={
-								channel.logo && (
-									<img
-										src={channel.logo}
-										alt={`${channel.name} logo`}
-										style={{ height: "24px", width: "auto" }}
-									/>
-								)
-							}
-						/>
+					<Table.Cell textAlign={"center"}>
+						{channel.logo && (
+							<IconButton
+								onClick={() => channel && openLogoDialog(channel)}
+								position="relative"
+								overflow="hidden"
+								size="2xl"
+								_before={{
+									content: '""',
+									position: "absolute",
+									top: 0,
+									left: 0,
+									right: 0,
+									bottom: 0,
+									background:
+										"linear-gradient(135deg, #F7FAFC 25%, #2D3748 75%)",
+									animation: "pulse 3s ease-in-out infinite alternate",
+									zIndex: -1,
+								}}
+							>
+								<Image
+									src={channel.logo}
+									alt={channel.name}
+									fit="contain"
+									aspectRatio={1}
+									height="100%"
+									width="auto"
+								/>
+							</IconButton>
+						)}
 					</Table.Cell>
 					<Table.Cell>{channel.name}</Table.Cell>
 					<Table.Cell>{channel.epgId}</Table.Cell>

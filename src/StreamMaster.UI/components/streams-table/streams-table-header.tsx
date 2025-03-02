@@ -31,6 +31,7 @@ export const StreamTableHeader = ({
 						}}
 					/>
 				</Table.ColumnHeader>
+				<Table.ColumnHeader>Logo</Table.ColumnHeader>
 				<Table.ColumnHeader>Name</Table.ColumnHeader>
 				<Table.ColumnHeader>Membership</Table.ColumnHeader>
 				<Table.ColumnHeader>Group</Table.ColumnHeader>

@@ -1,3 +1,5 @@
+"use client";
+
 import {
 	Box,
 	Button,
@@ -12,7 +14,6 @@ import {
 } from "@chakra-ui/react";
 import { Tabs } from "@chakra-ui/react";
 import { useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { LuX } from "react-icons/lu";
 import { Virtuoso } from "react-virtuoso";
 import { useApi } from "../../lib/use-api";
@@ -24,9 +25,9 @@ import {
 	DialogHeader,
 	DialogRoot,
 	DialogTitle,
-	DialogTrigger,
 } from "../ui/dialog";
 import { InputGroup } from "../ui/input-group";
+import { useLogoDialog } from "./logo-selector-dialog-context";
 
 export interface NormalizedLogo {
 	type: "custom" | "standard";
@@ -38,22 +39,19 @@ export interface NormalizedLogo {
 
 export interface LogoDialogProps {
 	title?: string;
-	onSelectLogo: (
-		logo: NormalizedLogo,
-	) => Promise<{ success: boolean; message: string }>;
-	trigger: ReactNode;
 	currentLogoUrl?: string;
 	currentLogoDisplayName?: string;
+	onClose?: () => void;
 }
 
 export const LogoSelectorDialog = ({
 	title = "Select Logo",
-	onSelectLogo,
-	trigger,
 	currentLogoUrl,
 	currentLogoDisplayName,
+	onClose,
 }: LogoDialogProps) => {
-	// Use useApi directly in the component
+	const { dialogState, closeLogoDialog } = useLogoDialog();
+
 	const { data: standardLogos = [], error: standardError } = useApi(
 		"/api/logos/getlogos",
 	);
@@ -62,7 +60,6 @@ export const LogoSelectorDialog = ({
 	);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedLogo, setSelectedLogo] = useState<NormalizedLogo | null>(null);
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const virtuosoRefs = {
 		all: useRef(null),
 		custom: useRef(null),
@@ -120,23 +117,20 @@ export const LogoSelectorDialog = ({
 
 	const handleConfirmSelection = async () => {
 		if (selectedLogo) {
-			const result = await onSelectLogo(selectedLogo);
-			if (result.success) {
-				setIsDialogOpen(false);
-			}
+			onClose?.();
 		}
 	};
 
 	// Reset selection when dialog opens
 	const handleDialogOpen = () => {
 		console.log("handleDialogOpen");
-		setIsDialogOpen(true);
 		setSelectedLogo(null);
 	};
 
 	// Reset state when dialog closes
 	const handleDialogClose = () => {
-		setIsDialogOpen(false);
+		closeLogoDialog();
+		onClose?.();
 		setSearchQuery("");
 	};
 
@@ -250,11 +244,10 @@ export const LogoSelectorDialog = ({
 
 	return (
 		<DialogRoot
-			open={isDialogOpen}
+			open={dialogState.isOpen}
 			onOpenChange={(e) => (e.open ? handleDialogOpen() : handleDialogClose())}
 			size="cover"
 		>
-			<DialogTrigger asChild>{trigger}</DialogTrigger>
 			<DialogContent portalled maxWidth="800px" maxHeight="90vh">
 				<Flex direction="column" height="100%">
 					<DialogHeader>
