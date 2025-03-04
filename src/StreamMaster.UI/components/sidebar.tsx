@@ -9,8 +9,14 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import type { ReactElement } from "react";
-import { FiActivity, FiBookOpen, FiSettings, FiVideo } from "react-icons/fi";
 import { Tooltip } from "./ui/tooltip";
+import {
+	LuActivity,
+	LuBookOpen,
+	LuSettings,
+	LuSquareCode,
+	LuVideo,
+} from "react-icons/lu";
 
 interface NavItemProps {
 	icon: ReactElement;
@@ -37,7 +43,7 @@ const NavItem: React.FC<NavItemProps> = ({
 			p="4"
 			borderRadius="lg"
 			cursor="pointer"
-			_hover={{ bg: "gray.700" }}
+			_hover={{ bg: "bg.emphasized" }}
 			w="full"
 		>
 			<HStack>
@@ -106,28 +112,35 @@ const Sidebar: React.FC<SidebarProps> = ({
 				px={isCollapsed ? 1 : 4}
 			>
 				<NavItem
-					icon={<FiVideo size={20} />}
+					icon={<LuSquareCode size={20} />}
+					isCollapsed={isCollapsed ?? initialCollapsed}
+					link="/sources"
+				>
+					Sources
+				</NavItem>
+				<NavItem
+					icon={<LuVideo size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/streams"
 				>
 					Streams
 				</NavItem>
 				<NavItem
-					icon={<FiActivity size={20} />}
+					icon={<LuActivity size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/status"
 				>
 					Status
 				</NavItem>
 				<NavItem
-					icon={<FiSettings size={20} />}
+					icon={<LuSettings size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/settings"
 				>
 					Settings
 				</NavItem>
 				<NavItem
-					icon={<FiBookOpen size={20} />}
+					icon={<LuBookOpen size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="https://carlreid.github.io/StreamMaster/"
 					isExternal={true}
