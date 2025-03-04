@@ -1,4 +1,5 @@
 import { Box, Heading, Text, VStack } from "@chakra-ui/react";
+import { QuickAccessUrls } from "../components/quick-access-urls/quick-access-urls";
 
 export default async function Page() {
 	return (
@@ -13,6 +14,9 @@ export default async function Page() {
 					actively working on improvements and additional functionality. Please
 					expect changes and potential issues as we refine the experience.
 				</Text>
+
+				<Heading>Quick Start</Heading>
+				<QuickAccessUrls />
 			</VStack>
 		</Box>
 	);
