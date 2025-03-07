@@ -80,7 +80,7 @@ public static class ConfigureServices
             options.AddPolicy("DevPolicy",
                 builder =>
                 builder
-                .WithOrigins("http://localhost:3000")
+                .WithOrigins("http://localhost:3000", "http://localhost:8910")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()
@@ -162,7 +162,11 @@ public static class ConfigureServices
 
         services.AddAppAuthenticationAndAuthorization();
 
-        services.AddSignalR().AddMessagePackProtocol();
+        services.AddSignalR()
+            .AddJsonProtocol(options =>
+            {
+                options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            });
 
         services.AddDataProtection().PersistKeysToDbContext<PGSQLRepositoryContext>();
 

@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@chakra-ui/react": "^3.8.1",
 		"@emotion/react": "^11.14.0",
+		"@microsoft/signalr": "^8.0.7",
 		"@types/node": "^22.13.5",
 		"@types/react": "^19.0.10",
 		"@types/react-dom": "^19.0.4",
