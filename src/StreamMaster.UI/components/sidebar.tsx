@@ -1,3 +1,5 @@
+"use client";
+
 import {
 	Box,
 	type BoxProps,
@@ -8,6 +10,7 @@ import {
 	Text,
 } from "@chakra-ui/react";
 import NextLink from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactElement } from "react";
 import { Tooltip } from "./ui/tooltip";
 import {
@@ -24,6 +27,7 @@ interface NavItemProps {
 	isCollapsed: boolean;
 	link: string;
 	isExternal?: boolean;
+	isActive?: boolean;
 }
 
 interface SidebarProps extends BoxProps {
@@ -37,18 +41,24 @@ const NavItem: React.FC<NavItemProps> = ({
 	isCollapsed,
 	link,
 	isExternal = false,
+	isActive = false,
 }) => {
 	const content = (
 		<Flex
 			p="4"
 			borderRadius="lg"
 			cursor="pointer"
-			_hover={{ bg: "bg.emphasized" }}
+			bg={isActive ? "bg.emphasized" : "transparent"}
+			_hover={{ bg: isActive ? "bg.emphasized" : "bg.subtle" }}
 			w="full"
 		>
 			<HStack>
-				<Box>{icon}</Box>
-				{!isCollapsed && <Box>{children}</Box>}
+				<Box color={isActive ? "accent.emphasized" : "inherit"}>{icon}</Box>
+				{!isCollapsed && (
+					<Box color={isActive ? "accent.emphasized" : "inherit"}>
+						{children}
+					</Box>
+				)}
 			</HStack>
 		</Flex>
 	);
@@ -77,6 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 	...props
 }) => {
 	const isCollapsed = false;
+	const pathname = usePathname();
 
 	// Use a default value during SSR to prevent layout shift
 	const sidebarWidth =
@@ -87,6 +98,18 @@ const Sidebar: React.FC<SidebarProps> = ({
 			: isCollapsed
 				? "60px"
 				: "240px";
+
+	// Helper function to check if a route is active
+	const isRouteActive = (link: string): boolean => {
+		if (link.startsWith("http")) return false; // External links are never active
+
+		// Exact match for home page
+		if (link === "/" && pathname === "/") return true;
+
+		// For other routes, check if pathname starts with the link
+		// This handles both exact matches and nested routes
+		return link !== "/" && pathname.startsWith(link);
+	};
 
 	return (
 		<Box
@@ -115,6 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					icon={<LuSquareCode size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/sources"
+					isActive={isRouteActive("/sources")}
 				>
 					Sources
 				</NavItem>
@@ -122,6 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					icon={<LuVideo size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/streams"
+					isActive={isRouteActive("/streams")}
 				>
 					Streams
 				</NavItem>
@@ -129,6 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					icon={<LuActivity size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/status"
+					isActive={isRouteActive("/status")}
 				>
 					Status
 				</NavItem>
@@ -136,6 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					icon={<LuSettings size={20} />}
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="/settings"
+					isActive={isRouteActive("/settings")}
 				>
 					Settings
 				</NavItem>
@@ -144,6 +171,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 					isCollapsed={isCollapsed ?? initialCollapsed}
 					link="https://carlreid.github.io/StreamMaster/"
 					isExternal={true}
+					isActive={false} // External links are never active
 				>
 					Wiki
 				</NavItem>
