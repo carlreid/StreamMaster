@@ -18,6 +18,7 @@ import {
 	LuBookOpen,
 	LuSettings,
 	LuSquareCode,
+	LuTestTubeDiagonal,
 	LuVideo,
 } from "react-icons/lu";
 
@@ -31,7 +32,6 @@ interface NavItemProps {
 }
 
 interface SidebarProps extends BoxProps {
-	// Add any additional props here
 	initialCollapsed?: boolean;
 }
 
@@ -125,7 +125,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 				justifyContent={isCollapsed ? "center" : "space-between"}
 				px={isCollapsed ? 0 : 4}
 			>
-				<Text hidden={isCollapsed || false}>StreamMaster</Text>
+				{!isCollapsed && (
+					<ChakraLink
+						as={NextLink}
+						href="/"
+						_hover={{ textDecoration: "none" }}
+					>
+						<Flex alignItems="center" gap={2}>
+							<LuTestTubeDiagonal size={24} />
+							<Text fontWeight="bold">StreamMaster</Text>
+						</Flex>
+					</ChakraLink>
+				)}
+				{isCollapsed && (
+					<ChakraLink as={NextLink} href="/">
+						<LuTestTubeDiagonal />
+					</ChakraLink>
+				)}
 			</Flex>
 			<Flex
 				direction="column"

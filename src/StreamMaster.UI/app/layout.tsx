@@ -8,8 +8,8 @@ import Provider from "./provider";
 import { LogoSelectorDialog } from "../components/logo-selector-dialog/logo-selector-dialog";
 
 export const metadata: Metadata = {
-	title: "Stream Master (v2)",
-	description: "Experimental version of the Stream Master dashboard.",
+	title: "StreamMaster (v2)",
+	description: "Experimental version of the StreamMaster dashboard.",
 };
 
 const inter = Inter({
