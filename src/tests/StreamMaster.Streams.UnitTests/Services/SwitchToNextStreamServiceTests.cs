@@ -73,7 +73,6 @@ public class SwitchToNextStreamServiceTests
                 ServiceProviderMock.Object,
                 IntroPlayListBuilderMock.Object,
                 CustomPlayListBuilderMock.Object,
-                StreamConnectionServiceMock.Object,
                 SettingsMonitorMock.Object
             );
         }

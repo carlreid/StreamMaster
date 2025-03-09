@@ -591,7 +591,7 @@ public partial class StreamGroupService(IHttpContextAccessor httpContextAccessor
 
             string cleanName = smChannel.Name.ToCleanFileString();
             string logo = logoService.GetLogoUrl(smChannel, baseUrl);
-            string epgId = string.IsNullOrEmpty(smChannel.EPGId) ? EPGHelper.DummyId + "-Dummy" : smChannel.EPGId;
+            string epgId = string.IsNullOrEmpty(smChannel.EPGId) ? EPGHelper.UserId + "-Dummy" : smChannel.EPGId;
 
             StationChannelName? match = cacheManager.StationChannelNames
                 .SelectMany(kvp => kvp.Value)

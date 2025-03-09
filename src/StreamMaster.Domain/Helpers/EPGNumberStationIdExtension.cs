@@ -15,7 +15,7 @@ public static partial class EPGNumberStationIdExtension
     {
         if (string.IsNullOrWhiteSpace(userTvgId))
         {
-            return (EPGHelper.DummyId, "Dummy");
+            return (EPGHelper.UserId, "Dummy");
         }
 
         // Define or retrieve your regex here
@@ -27,7 +27,7 @@ public static partial class EPGNumberStationIdExtension
         // Validate the match and parse the values
         if (!match.Success || match.Groups.Count != 3)
         {
-            return (EPGHelper.DummyId, userTvgId);
+            return (EPGHelper.UserId, userTvgId);
         }
 
         if (int.TryParse(match.Groups[1].Value, out int epgNumber))
@@ -36,7 +36,7 @@ public static partial class EPGNumberStationIdExtension
             return (epgNumber, stationId);
         }
 
-        return (EPGHelper.DummyId, "Dummy");
+        return (EPGHelper.UserId, "Dummy");
     }
 
     [GeneratedRegex(EPGHelper.EPGMatch)]

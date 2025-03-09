@@ -319,7 +319,7 @@ namespace StreamMaster.SchedulesDirect.Converters
 
                 list.Add(new XmltvEpisodeNum { System = "xmltv_ns", Text = text });
             }
-            else if (mxfProgram.EPGNumber is EPGHelper.DummyId or EPGHelper.CustomPlayListId)
+            else if (mxfProgram.EPGNumber is EPGHelper.UserId or EPGHelper.MovieId)
             {
                 list.Add(new XmltvEpisodeNum { System = "original-air-date", Text = $"{scheduleEntry.StartTime.ToLocalTime():yyyy-MM-dd}" });
             }

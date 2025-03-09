@@ -69,11 +69,11 @@ public class SchedulesDirectDataService()
 
     public ICustomStreamData CustomStreamData()
     {
-        return CustomStreamDatas.GetOrAdd(EPGHelper.CustomPlayListId, (_) =>
+        return CustomStreamDatas.GetOrAdd(EPGHelper.MovieId, (_) =>
         {
-            CustomStreamData data = new(EPGHelper.CustomPlayListId)
+            CustomStreamData data = new(EPGHelper.MovieId)
             {
-                EPGNumber = EPGHelper.CustomPlayListId
+                EPGNumber = EPGHelper.MovieId
             };
             return data;
         });
