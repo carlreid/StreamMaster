@@ -235,7 +235,6 @@ public partial class StreamGroupService(IHttpContextAccessor httpContextAccessor
 
     private void WriteSTRMFile(StreamGroup streamGroup, VideoStreamConfig videoStreamConfig, bool IsShort = true)
     {
-
         string baseUrl = settings.CurrentValue.STRMBaseURL;
         string strmFullName = GetSTRMPath(streamGroup, videoStreamConfig);
 
@@ -329,10 +328,18 @@ public partial class StreamGroupService(IHttpContextAccessor httpContextAccessor
             return cacheManager.DefaultSG;
         }
 
-        cacheManager.DefaultSG = await GetStreamGroupFromNameAsync(BuildInfo.DefaultStreamGroupName).ConfigureAwait(false)
-            ?? throw new Exception("StreamGroup '" + BuildInfo.DefaultStreamGroupName + "' not found");
+        string defaultStreamGroupName = BuildInfo.DefaultStreamGroupName;
 
-        return cacheManager.DefaultSG;
+        StreamGroup? streamGroup = await GetStreamGroupFromNameAsync(defaultStreamGroupName).ConfigureAwait(false);
+        if (streamGroup == null)
+        {
+            throw new Exception($"StreamGroup '{defaultStreamGroupName}' not found");
+        }
+
+        // Cache the result
+        cacheManager.DefaultSG = streamGroup;
+
+        return streamGroup;
     }
 
     public async Task<int> GetStreamGroupIdFromSGProfileIdAsync(int? streamGroupProfileId)
@@ -354,24 +361,37 @@ public partial class StreamGroupService(IHttpContextAccessor httpContextAccessor
 
     public async Task<CommandProfileDto> GetProfileFromSGIdsCommandProfileNameAsync(int? streamGroupId, int streamGroupProfileId, string commandProfileName)
     {
-        // Check if the commandProfileName is not "Default" and get the corresponding profile DTO
-        CommandProfileDto? commandProfileDto = !string.Equals(commandProfileName, "Default", StringComparison.InvariantCultureIgnoreCase)
-            ? _commandProfileSettings.CurrentValue.GetProfileDto(commandProfileName)
-            : null;
+        // First get the StreamGroupProfile to check its assigned command profile
+        StreamGroupProfile streamGroupProfile = await GetStreamGroupProfileAsync(streamGroupId, streamGroupProfileId).ConfigureAwait(false);
 
-        // If commandProfileDto is null or "Default", proceed to fetch StreamGroupProfile and decide on profile DTO
-        if (commandProfileDto == null || string.Equals(commandProfileDto.ProfileName, "Default", StringComparison.InvariantCultureIgnoreCase))
+        // Try to use the stream group's profile if it's not "Default"
+        if (!string.Equals(streamGroupProfile.CommandProfileName, "Default", StringComparison.InvariantCultureIgnoreCase))
         {
-            StreamGroupProfile streamGroupProfile = await GetStreamGroupProfileAsync(streamGroupId, streamGroupProfileId).ConfigureAwait(false);
-
-            string profileToFetch = !string.Equals(streamGroupProfile.CommandProfileName, "Default", StringComparison.InvariantCultureIgnoreCase)
-                ? streamGroupProfile.CommandProfileName
-                : settings.CurrentValue.DefaultCommandProfileName;
-
-            commandProfileDto = _commandProfileSettings.CurrentValue.GetProfileDto(profileToFetch);
+            try
+            {
+                return _commandProfileSettings.CurrentValue.GetProfileDto(streamGroupProfile.CommandProfileName);
+            }
+            catch
+            {
+                // If the stream group's profile doesn't exist, continue to next option
+            }
         }
 
-        return commandProfileDto;
+        // Try to use the requested profile if it's not "Default"
+        if (!string.Equals(commandProfileName, "Default", StringComparison.InvariantCultureIgnoreCase))
+        {
+            try
+            {
+                return _commandProfileSettings.CurrentValue.GetProfileDto(commandProfileName);
+            }
+            catch
+            {
+                // If the requested profile doesn't exist, continue to next option
+            }
+        }
+
+        // Fall back to the system default command profile
+        return _commandProfileSettings.CurrentValue.GetProfileDto(settings.CurrentValue.DefaultCommandProfileName);
     }
 
     public async Task<int> GetDefaultSGIdAsync()
@@ -721,6 +741,7 @@ public partial class StreamGroupService(IHttpContextAccessor httpContextAccessor
         }
         return sgFiles.ToDictionary();
     }
+
     private static string CleanUpName(string name)
     {
         if (string.IsNullOrEmpty(name))
