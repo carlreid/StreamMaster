@@ -70,7 +70,7 @@ public class LogoInfo
             smStream.Logo,
             smStream.SMStreamType switch
             {
-                SMStreamTypeEnum.CustomPlayList => SMFileTypes.CustomPlayListLogo,
+                SMStreamTypeEnum.Movie => SMFileTypes.CustomPlayListLogo,
                 _ => SMFileTypes.Logo
             })
     {

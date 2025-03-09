@@ -226,7 +226,7 @@ public class SwitchToNextStreamServiceTests
         // Arrange
         var fixture = new TestFixture();
         var status = fixture.CreateChannelStatus();
-        status.SMChannel.SMStreamDtos[0].SMStreamType = SMStreamTypeEnum.CustomPlayList;
+        status.SMChannel.SMStreamDtos[0].SMStreamType = SMStreamTypeEnum.Movie;
 
         var customPlayList = new CustomPlayList
         {
@@ -254,7 +254,7 @@ public class SwitchToNextStreamServiceTests
 
         // Assert
         result.ShouldBeTrue();
-        status.SMStreamInfo.SMStreamType.ShouldBe(SMStreamTypeEnum.CustomPlayList);
+        status.SMStreamInfo.SMStreamType.ShouldBe(SMStreamTypeEnum.Movie);
         status.SMStreamInfo.Name.ShouldBe("TestMovie");
     }
 
@@ -320,7 +320,7 @@ public class SwitchToNextStreamServiceTests
 
         // Assert
         result.ShouldBeTrue();
-        status.SMStreamInfo.SMStreamType.ShouldBe(SMStreamTypeEnum.CustomPlayList);
+        status.SMStreamInfo.SMStreamType.ShouldBe(SMStreamTypeEnum.Movie);
         status.SMStreamInfo.Name.ShouldBe("IntroPlaylist");
     }
 

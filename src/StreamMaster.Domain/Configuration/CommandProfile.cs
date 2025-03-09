@@ -31,25 +31,25 @@ public class CommandProfileDict : IProfileDict<CommandProfile>
     [JsonIgnore]
     public Dictionary<string, CommandProfile> Profiles => CommandProfiles;
 
-    public bool HasProfile(string CommandProfileName)
+    public bool HasProfile(string commandProfileName)
     {
-        return Profiles.TryGetValue(CommandProfileName, out _);
+        return Profiles.TryGetValue(commandProfileName, out _);
     }
 
-    public CommandProfileDto GetProfileDto(string CommandProfileName)
+    public CommandProfileDto GetProfileDto(string commandProfileName)
     {
-        return GetDefaultProfileDto(CommandProfileName);
+        return GetDefaultProfileDto(commandProfileName);
     }
 
-    public CommandProfileDto GetDefaultProfileDto(string defaultName = "Default")
+    public CommandProfileDto GetDefaultProfileDto(string profileName = "Default")
     {
-        CommandProfile? defaultProfile = GetProfile(defaultName);
-        return defaultProfile == null
-            ? throw new Exception($"Command Profile {defaultName} not found")
-            : GetProfileDtoFromProfile(defaultProfile, defaultName);
+        CommandProfile? commandProfile = GetProfile(profileName);
+        return commandProfile == null
+            ? throw new Exception($"Command Profile {profileName} not found")
+            : GetProfileDtoFromCommandProfile(commandProfile, profileName);
     }
 
-    public static CommandProfileDto GetProfileDtoFromProfile(CommandProfile commandProfile, string ProfileName)
+    public static CommandProfileDto GetProfileDtoFromCommandProfile(CommandProfile commandProfile, string ProfileName)
     {
         return new CommandProfileDto
         {
@@ -68,7 +68,7 @@ public class CommandProfileDict : IProfileDict<CommandProfile>
         {
             if (Profiles.TryGetValue(key, out CommandProfile? profile))
             {
-                ret.Add(GetProfileDtoFromProfile(profile, key));
+                ret.Add(GetProfileDtoFromCommandProfile(profile, key));
             }
         }
         return ret;

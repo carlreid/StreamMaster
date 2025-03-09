@@ -16,7 +16,6 @@ public sealed class SwitchToNextStreamService(
     IServiceProvider serviceProvider,
     IIntroPlayListBuilder introPlayListBuilder,
     ICustomPlayListBuilder customPlayListBuilder,
-        IStreamConnectionService streamConnectionService,
     IOptionsMonitor<Setting> settingsMonitor) : ISwitchToNextStreamService
 {
     /// <inheritdoc/>
@@ -54,7 +53,7 @@ public sealed class SwitchToNextStreamService(
             ? HandleStreamLimits(channelStatus, settings)
             : smStream.SMStreamType switch
             {
-                SMStreamTypeEnum.CustomPlayList => HandleCustomPlayListStream(channelStatus, smStream, settings),
+                SMStreamTypeEnum.Movie => HandleCustomPlayListStream(channelStatus, smStream, settings),
                 SMStreamTypeEnum.Intro => HandleIntroStream(channelStatus, smStream, settings),
                 _ => await HandleStandardStreamAsync(scope, channelStatus, smStream, settings).ConfigureAwait(false)
             };
@@ -107,7 +106,7 @@ public sealed class SwitchToNextStreamService(
             Id = introPlayList.Name,
             Name = introPlayList.Name,
             Url = introPlayList.CustomStreamNfos[0].VideoFileName,
-            SMStreamType = SMStreamTypeEnum.CustomPlayList,
+            SMStreamType = SMStreamTypeEnum.Movie,
             ClientUserAgent = GetClientUserAgent(channelStatus.SMChannel, smStream, settings),
             CommandProfile = customPlayListProfile
         };
@@ -234,7 +233,7 @@ public sealed class SwitchToNextStreamService(
             Id = streamNfo.StreamNfo.Movie.Title,
             Name = streamNfo.StreamNfo.Movie.Title,
             Url = streamNfo.StreamNfo.VideoFileName,
-            SMStreamType = SMStreamTypeEnum.CustomPlayList,
+            SMStreamType = SMStreamTypeEnum.Movie,
             SecondsIn = streamNfo.SecondsIn,
             ClientUserAgent = GetClientUserAgent(channelStatus.SMChannel, smStream, settings),
             CommandProfile = customPlayListProfile

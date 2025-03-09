@@ -42,7 +42,7 @@ internal class GetPagedSMChannelsRequestHandler(IRepositoryWrapper Repository, I
             await Repository.SMChannelStreamLink.UpdateSMChannelDtoRanks(channel);
             await Repository.SMChannelChannelLink.UpdateSMChannelDtoRanks(channel);
 
-            //SMStreamTypeEnum sType = channel.M3UFileId == EPGHelper.CustomPlayListId ? SMStreamTypeEnum.CustomPlayList : SMStreamTypeEnum.Regular;
+            //SMStreamTypeEnum sType = channel.M3UFileId == EPGHelper.CustomPlayListId ? SMStreamTypeEnum.Movie : SMStreamTypeEnum.Regular;
 
             ////channel.ChannelLogo = channel.ChannelLogo;// logoSerice.GetLogoUrl(channel.ChannelLogo, "", sType);
             channel.SMStreamDtos = [.. channel.SMStreamDtos.OrderBy(a => a.Rank)];

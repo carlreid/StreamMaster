@@ -424,7 +424,7 @@ public sealed class ChannelService : IChannelService
             Id = channelBroadcaster.SMChannel.Id.ToString(),
             Name = channelBroadcaster.SMChannel.Name,
             Url = channelBroadcaster.SMChannel.Id.ToString(),
-            SMStreamType = SMStreamTypeEnum.Custom,
+            SMStreamType = SMStreamTypeEnum.Movie,
             ClientUserAgent = "",
             CommandProfile = new()
         };

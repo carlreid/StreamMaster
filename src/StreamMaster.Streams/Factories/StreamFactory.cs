@@ -59,7 +59,7 @@ public sealed class StreamFactory(
 
             return smStreamInfo.SMStreamType switch
             {
-                SMStreamTypeEnum.CustomPlayList or SMStreamTypeEnum.Intro or SMStreamTypeEnum.Message
+                SMStreamTypeEnum.Movie or SMStreamTypeEnum.Intro or SMStreamTypeEnum.Message
                     => await customPlayListStream.HandleStream(smStreamInfo, clientUserAgent, cancellationToken).ConfigureAwait(false),
 
                 _ when smStreamInfo.Url.EndsWith(".m3u8")
@@ -82,6 +82,7 @@ public sealed class StreamFactory(
             stopwatch.Stop();
         }
     }
+
     private GetStreamResult ExecuteCommandForM3U8(SMStreamInfo smStreamInfo, string clientUserAgent, CancellationToken cancellationToken)
     {
         CommandProfileDto commandProfileDto = profileService.GetM3U8OutputProfile(smStreamInfo.Id);
