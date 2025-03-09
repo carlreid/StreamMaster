@@ -24,6 +24,8 @@ type CreateEPGFileRequest = components["schemas"]["CreateEPGFileRequest"];
 type UpdateEPGFileRequest = components["schemas"]["UpdateEPGFileRequest"];
 type DeleteEPGFileRequest = components["schemas"]["DeleteEPGFileRequest"];
 
+type ChannelMetric = components["schemas"]["ChannelMetric"];
+
 export interface SignalRMethods {
 	GetPagedM3UFiles: (
 		params: QueryStringParameters,
@@ -37,7 +39,18 @@ export interface SignalRMethods {
 	CreateEPGFile: (request: CreateEPGFileRequest) => Promise<APIResponse>;
 	DeleteEPGFile: (request: DeleteEPGFileRequest) => Promise<APIResponse>;
 	UpdateEPGFile: (request: UpdateEPGFileRequest) => Promise<APIResponse>;
+	GetChannelMetrics: () => Promise<ChannelMetric[]>;
 	TaskIsRunning: (taskName: string) => Promise<boolean>;
+	CancelAllChannels: () => void;
+	CancelChannel: (
+		cancelChannelRequest: components["schemas"]["CancelChannelRequest"],
+	) => void;
+	CancelClient: (
+		cancelClientRequest: components["schemas"]["CancelClientRequest"],
+	) => void;
+	MoveToNextStream: (
+		moveToNextStreamRequest: components["schemas"]["MoveToNextStreamRequest"],
+	) => void;
 }
 
 export interface SignalREvents {
@@ -52,6 +65,7 @@ export interface SignalREvents {
 	SetField: (fieldDatas: FieldData[]) => void;
 	ClearByTag: (clearByTag: ClearByTag) => void;
 	AuthLogOut: () => void;
+	GetChannelMetrics: (channelMetrics: ChannelMetric) => void;
 }
 
 export type DataRefreshCallback = (entity: keyof SignalRMethods) => void;
