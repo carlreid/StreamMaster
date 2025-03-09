@@ -1,10 +1,10 @@
 ﻿namespace StreamMaster.Domain.Enums;
 
 [TsEnum]
-public enum SMChannelTypeEnum
+public enum SMStreamTypeEnum
 {
     Regular = 0,
-    MultiView = 1,
+    User = 1,
     Movie = 2,
     Intro = 3,
     Message = 4,

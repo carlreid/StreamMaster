@@ -1,10 +1,20 @@
-﻿namespace StreamMaster.Application.Custom.Commands;
+﻿using StreamMaster.Domain.Crypto;
+
+namespace StreamMaster.Application.Custom.Commands;
 
 [SMAPI]
 [TsInterface(AutoI = false, IncludeNamespace = false, FlattenHierarchy = true, AutoExportMethods = false)]
 public record ScanForCustomRequest : IRequest<APIResponse>;
 
-public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfileDict> optionsOutputProfiles, IOptionsMonitor<Setting> _settings, ICacheManager cacheManager, IIntroPlayListBuilder introPlayListBuilder, ICustomPlayListBuilder CustomPlayListBuilder, IRepositoryWrapper Repository)
+public class ScanForCustomPlayListsRequestHandler(
+    ILogoService logoService,
+    IOptionsMonitor<CommandProfileDict> optionsOutputProfiles,
+    IDataRefreshService dataRefreshService,
+    IOptionsMonitor<Setting> _settings,
+    ICacheManager cacheManager,
+    IIntroPlayListBuilder introPlayListBuilder,
+    ICustomPlayListBuilder CustomPlayListBuilder,
+    IRepositoryWrapper Repository)
     : IRequestHandler<ScanForCustomRequest, APIResponse>
 {
     public async Task<APIResponse> Handle(ScanForCustomRequest command, CancellationToken cancellationToken)
@@ -24,74 +34,60 @@ public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfile
                     currentStream.Logo = customPlayList.Logo;
                 }
 
-                continue;
+                string logoStreamSource = currentStream.Logo.ToUrlSafeBase64String() + Path.GetExtension(currentStream.Logo);
+                logoService.AddLogoToCache(logoStreamSource, currentStream.Name, SMFileTypes.CustomPlayListLogo);
             }
-
-            //string logo = logoService.GetLogoUrl2(customPlayList.ChannelLogo, SMFileTypes.CustomPlayListLogo);
-            string logo = customPlayList.Logo.Remove(0, BuildInfo.CustomPlayListFolder.Length);
-
-            SMStream smStream = new()
+            else if (customPlayList.CustomStreamNfos != null && customPlayList.CustomStreamNfos.Count != 0)
             {
-                Id = id,
-                EPGID = EPGHelper.CustomPlayListId + "-" + customPlayList.Name,
-                Name = customPlayList.Name,
-                M3UFileName = customPlayList.Name,
-                M3UFileId = EPGHelper.CustomPlayListId,
-                Group = "CustomPlayList",
-                SMStreamType = SMStreamTypeEnum.CustomPlayList,
-                Logo = logo,
-                Url = "STREAMMASTER",
-                IsSystem = true,
-            };
-            Repository.SMStream.Create(smStream);
-            smStreamIdsToChannels.Add(smStream.Id);
+                string logo = customPlayList.Logo;
+                string logoSource = logo.ToUrlSafeBase64String() + Path.GetExtension(logo);
+                logoService.AddLogoToCache(logoSource, customPlayList.Name, SMFileTypes.CustomPlayListLogo);
 
-            foreach (CustomStreamNfo nfo in customPlayList.CustomStreamNfos)
-            {
-                string streamId = $"{id}|{nfo.Movie.Title}";
-                SMStream? nfoStream = await Repository.SMStream.FirstOrDefaultAsync(s => s.Id == streamId, tracking: true, cancellationToken: cancellationToken);
+                M3UFile? priv = await Repository.M3UFile.FirstOrDefaultAsync(a => a.Name == "-1PRIVATESYSTEM", cancellationToken: cancellationToken);
 
-                if (nfoStream != null)
+                foreach (CustomStreamNfo nfo in customPlayList.CustomStreamNfos)
                 {
-                    continue;
+                    string streamId = id + "|" + nfo.Movie.Title;
+                    SMStream? nfoStream = await Repository.SMStream.FirstOrDefaultAsync(s => s.Id == streamId, tracking: true, cancellationToken: cancellationToken);
+
+                    if (nfoStream == null)
+                    {
+                        string logo2 = nfo.Movie.Thumb?.Text ?? nfo.Movie.Fanart?.Thumb?.Text ?? customPlayList.Logo;
+                        string url = nfo.VideoFileName.ToUrlSafeBase64String();
+                        string? ext = Path.GetExtension(nfo.VideoFileName);
+                        if (ext != null)
+                            url += ext;
+
+                        SMStream newStream = new()
+                        {
+                            Id = streamId,
+                            EPGID = EPGHelper.MovieId + "-" + nfo.Movie.Title,
+                            Name = nfo.Movie.Title,
+                            M3UFileName = Path.GetFileName(nfo.VideoFileName),
+                            M3UFileId = EPGHelper.MovieId,
+                            Group = "CustomPlayList",
+                            SMStreamType = SMStreamTypeEnum.Movie,
+                            Url = "/v/c/" + url,
+                            Logo = logo,
+                            IsSystem = true
+                        };
+
+                        Repository.SMStream.Create(newStream);
+                        smStreamIdsToChannels.Add(newStream.Id);
+                    }
                 }
-
-                //string? c = await streamGroupService.EncodeStreamGroupIdStreamIdAsync(EPGHelper.CustomPlayListId, streamId);
-                string logo2 = nfo.Movie.Thumb?.Text ?? nfo.Movie.Fanart?.Thumb?.Text ?? customPlayList.Logo;
-
-                if (logo.StartsWith(BuildInfo.CustomPlayListFolder))
-                {
-                    logo = logo.Remove(0, BuildInfo.CustomPlayListFolder.Length);
-                }
-
-                SMStream newStream = new()
-                {
-                    Id = streamId,
-                    EPGID = EPGHelper.CustomPlayListId + "-" + nfo.Movie.Title,
-                    Name = nfo.Movie.Title,
-                    M3UFileName = Path.GetFileName(nfo.VideoFileName),
-                    M3UFileId = EPGHelper.CustomPlayListId,
-                    Group = "CustomPlayList",
-                    SMStreamType = SMStreamTypeEnum.Custom,
-                    Url = nfo.VideoFileName,
-                    Logo = logo,
-                    IsSystem = true,
-                };
-
-                Repository.SMStream.Create(newStream);
             }
         }
-        _ = await Repository.SaveAsync();
 
-        _ = await Repository.SMChannel.CreateSMChannelsFromStreams(smStreamIdsToChannels, null);
+        await Repository.SaveAsync();
+        APIResponse apiResponse = await Repository.SMChannel.CreateSMChannelsFromStreams(smStreamIdsToChannels, null);
 
         List<CustomPlayList> introPlayLists = introPlayListBuilder.GetIntroPlayLists();
         foreach (CustomPlayList customPlayList in introPlayLists)
         {
             foreach (CustomStreamNfo nfo in customPlayList.CustomStreamNfos)
             {
-                string streamId = $"{IntroPlayListBuilder.IntroIDPrefix}{nfo.Movie.Title}";
-
+                string streamId = "|intro|" + nfo.Movie.Title;
                 SMStream? nfoStream = await Repository.SMStream.FirstOrDefaultAsync(s => s.Id == streamId, tracking: true, cancellationToken: cancellationToken);
 
                 if (nfoStream != null)
@@ -100,25 +96,27 @@ public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfile
                     {
                         nfoStream.Logo = customPlayList.Logo;
                     }
-                    continue;
                 }
-
-                SMStream newStream = new()
+                else
                 {
-                    Id = streamId,
-                    EPGID = EPGHelper.IntroPlayListId + "-" + nfo.Movie.Title,
-                    Name = nfo.Movie.Title,
-                    M3UFileName = Path.GetFileName(nfo.VideoFileName),
-                    M3UFileId = EPGHelper.IntroPlayListId,
-                    Group = "Intros",
-                    SMStreamType = SMStreamTypeEnum.Intro,
-                    Url = nfo.VideoFileName,
-                    IsSystem = true
-                };
-                Repository.SMStream.Create(newStream);
+                    SMStream newStream = new()
+                    {
+                        Id = streamId,
+                        EPGID = EPGHelper.IntroId.ToString() + "-" + nfo.Movie.Title,
+                        Name = nfo.Movie.Title,
+                        M3UFileName = Path.GetFileName(nfo.VideoFileName),
+                        M3UFileId = EPGHelper.IntroId,
+                        Group = "Intros",
+                        SMStreamType = SMStreamTypeEnum.Intro,
+                        Url = nfo.VideoFileName,
+                        IsSystem = true
+                    };
+                    Repository.SMStream.Create(newStream);
+                }
             }
         }
-        _ = await Repository.SaveAsync();
+
+        await Repository.SaveAsync();
 
         if (File.Exists(BuildInfo.MessageNoStreamsLeft))
         {
@@ -128,10 +126,10 @@ public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfile
                 stream = new()
                 {
                     Id = "MessageNoStreamsLeft",
-                    EPGID = EPGHelper.MessageId + "-MessageNoStreamsLeft",
+                    EPGID = EPGHelper.MessageId.ToString() + "-MessageNoStreamsLeft",
                     Name = "No Streams Left",
                     M3UFileName = Path.GetFileName(BuildInfo.MessageNoStreamsLeft),
-                    M3UFileId = EPGHelper.IntroPlayListId,
+                    M3UFileId = EPGHelper.MessageId,
                     Group = "SystemMessages",
                     SMStreamType = SMStreamTypeEnum.Message,
                     Url = BuildInfo.MessageNoStreamsLeft,
@@ -140,6 +138,7 @@ public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfile
                 Repository.SMStream.Create(stream);
                 await Repository.SaveAsync();
             }
+
             if (stream != null)
             {
                 CommandProfileDto introCommandProfileDto = optionsOutputProfiles.CurrentValue.GetProfileDto("SMFFMPEG");
@@ -155,6 +154,9 @@ public class ScanForCustomPlayListsRequestHandler(IOptionsMonitor<CommandProfile
                 cacheManager.MessageNoStreamsLeft = smStreamInfo;
             }
         }
+
+        await dataRefreshService.RefreshSMStreams();
+        await dataRefreshService.RefreshAllSMChannels();
 
         return APIResponse.Success;
     }

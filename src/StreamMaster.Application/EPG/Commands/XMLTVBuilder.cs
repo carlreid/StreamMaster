@@ -82,7 +82,7 @@ public class XMLTVBuilder(
         cancellation.ThrowIfCancellationRequested();
 
         // Process Dummy Configurations
-        List<VideoStreamConfig> dummyVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.DummyId)];
+        List<VideoStreamConfig> dummyVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.UserId)];
         if (dummyVideoStreamConfigs.Count > 0)
         {
             ProcessDummyConfigs(xmlTv, dummyVideoStreamConfigs);
@@ -91,7 +91,7 @@ public class XMLTVBuilder(
         cancellation.ThrowIfCancellationRequested();
 
         // Process Custom PlayList Configurations
-        List<VideoStreamConfig> customVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.CustomPlayListId)];
+        List<VideoStreamConfig> customVideoStreamConfigs = [.. videoStreamConfigs.Where(a => a.EPGNumber == EPGHelper.MovieId)];
         if (customVideoStreamConfigs.Count > 0)
         {
             ProcessCustomPlaylists(xmlTv, customVideoStreamConfigs);

@@ -1787,12 +1787,8 @@ export enum M3UKey {
 }
 export enum SMChannelTypeEnum {
 	Regular = 0,
-	MultiView = 1
-}
-export enum SMStreamTypeEnum {
-	Regular = 0,
-	CustomPlayList = 1,
-	Custom = 2,
+	MultiView = 1,
+	Movie = 2,
 	Intro = 3,
 	Message = 4
 }
@@ -1809,6 +1805,13 @@ export enum SMFileTypes {
 	CustomPlayList = 9,
 	CustomPlayListLogo = 10,
 	ProgramLogo = 11
+}
+export enum SMStreamTypeEnum {
+	Regular = 0,
+	User = 1,
+	Movie = 2,
+	Intro = 3,
+	Message = 4
 }
 export enum ValidM3USetting {
 	NotMapped = 0,
