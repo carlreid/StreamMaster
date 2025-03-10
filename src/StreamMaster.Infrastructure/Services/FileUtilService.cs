@@ -111,10 +111,12 @@ namespace StreamMaster.Infrastructure.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
+                    // Only handle start elements where relevant
                     if (reader.NodeType == XmlNodeType.Element)
                     {
                         if (reader.Name == "programme")
                         {
+                            // Before continue, if we have a channel currently open, add it to the list
                             if (currentChannel is not null)
                             {
                                 // Only add if not a duplicate
@@ -125,7 +127,7 @@ namespace StreamMaster.Infrastructure.Services
                                 }
                                 currentChannel = null;
                             }
-                            break;
+                            continue;
                         }
 
                         if (reader.Name == "channel")
