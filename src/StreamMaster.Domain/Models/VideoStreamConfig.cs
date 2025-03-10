@@ -78,9 +78,9 @@ public class VideoStreamConfig
     /// </summary>
     public OutputProfileDto? OutputProfile { get; set; }
 
-    public bool IsDummy => M3UFileId == EPGHelper.DummyId;
-    public bool IsCustom => M3UFileId == EPGHelper.CustomPlayListId;
-    public bool IsIntro => M3UFileId == EPGHelper.IntroPlayListId;
+    public bool IsDummy => M3UFileId == EPGHelper.UserId;
+    public bool IsMovie => M3UFileId == EPGHelper.MovieId;
+    public bool IsIntro => M3UFileId == EPGHelper.IntroId;
 
     public string BaseUrl { get; set; } = string.Empty;
 

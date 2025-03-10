@@ -62,7 +62,7 @@ namespace StreamMaster.SchedulesDirect.Converters
 
             if (service.MxfScheduleEntries.ScheduleEntry.Count == 0 && sdSettings.XmltvAddFillerData)
             {
-                if (service.EPGNumber == EPGHelper.CustomPlayListId)
+                if (service.EPGNumber == EPGHelper.MovieId)
                 {
                     // Custom playlist logic
                     List<(Movie Movie, DateTime StartTime, DateTime EndTime)> moviesForPeriod = customPlayListBuilder.GetMoviesForPeriod(service.CallSign, DateTime.UtcNow, sdSettings.SDEPGDays);

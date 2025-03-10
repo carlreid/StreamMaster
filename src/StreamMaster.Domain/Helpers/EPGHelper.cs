@@ -7,9 +7,9 @@ namespace StreamMaster.Domain.Helpers;
 public partial class EPGHelper() : IEPGHelper
 {
     public const int SchedulesDirectId = -1;
-    public const int DummyId = -2;
-    public const int CustomPlayListId = -3;
-    public const int IntroPlayListId = -4;
+    public const int UserId = -2;
+    public const int MovieId = -3;
+    public const int IntroId = -4;
     public const int MessageId = -5;
 
     public const string EPGMatch = @"(^\-?\d+)-(.*)";
@@ -73,29 +73,6 @@ public partial class EPGHelper() : IEPGHelper
             : ((int epgNumber, string stationId))(epgNumber, matches[0].Groups[2].Value);
     }
 
-    //public bool IsDummy(string? user_tvg_id)
-    //{
-    //    if (string.IsNullOrEmpty(user_tvg_id))
-    //    {
-    //        return true;
-    //    }
-
-    //    if (user_tvg_id.StartsWith($"{DummyId}-"))
-    //    {
-    //        return true;
-    //    }
-
-    //    //
-    //    //bool test = IsValidEPGId(user_tvg_id);
-    //    //return test || Regex.IsMatch(user_tvg_id, setting.DummyRegex, RegexOptions.IgnoreCase) || !string.IsNullOrEmpty(user_tvg_id);
-    //    return false;
-    //}
-
-    //public bool IsDummy(int epgNumber)
-    //{
-    //    return epgNumber == DummyId;
-    //}
-
     public bool IsSchedulesDirect(int epgNumber)
     {
         return epgNumber == SchedulesDirectId;
@@ -107,9 +84,9 @@ public partial class EPGHelper() : IEPGHelper
         return matches.Count > 0;
     }
 
-    public bool IsCustom(int epgNumber)
+    public bool IsMovie(int epgNumber)
     {
-        return epgNumber == CustomPlayListId;
+        return epgNumber == MovieId;
     }
 
     [GeneratedRegex(EPGMatch)]

@@ -14,6 +14,8 @@ using StreamMaster.PlayList;
 using StreamMaster.PlayList.Models;
 using System.Globalization;
 
+namespace StreamMaster.Application.UnitTests.EPG.Commands;
+
 public class XMLTVBuilderTests : IDisposable
 {
     private readonly Mock<IOptionsMonitor<SDSettings>> _sdSettingsMock = new();
