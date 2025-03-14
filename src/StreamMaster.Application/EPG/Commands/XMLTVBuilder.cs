@@ -287,16 +287,40 @@ public class XMLTVBuilder(
             if (channelsById.TryGetValue(videoStreamConfig.EPGId, out List<XmltvChannel>? matchingChannels))
             {
                 XmltvChannel? firstChannel = matchingChannels[0];
+
+                List<XmltvIcon>? icons = null;
+
+                // Determine logo source based on config and settings
+                if (!string.IsNullOrEmpty(videoStreamConfig.Logo) || !string.IsNullOrEmpty(videoStreamConfig.OGLogo))
+                {
+                    // Use Logo or OGLogo from VideoStreamConfig
+                    var logoSrc = settings.CurrentValue.LogoCache ? videoStreamConfig.Logo : videoStreamConfig.OGLogo;
+                    if (!string.IsNullOrEmpty(logoSrc))
+                    {
+                        icons = [new XmltvIcon { Src = logoSrc }];
+                    }
+                }
+                else if (firstChannel.Icons != null && firstChannel.Icons.Count != 0)
+                {
+                    // If we dont have values on the config, copy the first channel icons
+                    icons = [.. firstChannel.Icons.Select(a => new XmltvIcon() { Src = a.Src })];
+                }
+                else
+                {
+                    // Fallback to custom playlist logo if no other logo is available
+                    var customPlaylistLogo = customPlayListBuilder.GetCustomPlayListLogoFromFileName(videoStreamConfig.Name);
+                    if (!string.IsNullOrEmpty(customPlaylistLogo))
+                    {
+                        icons = [new XmltvIcon { Src = customPlaylistLogo }];
+                    }
+                }
+
                 XmltvChannel updatedChannel = new()
                 {
                     Id = videoStreamConfig.OutputProfile!.Id,
                     DisplayNames = firstChannel.DisplayNames?.Count > 0 ? [firstChannel.DisplayNames[0]] : [new XmltvText(videoStreamConfig.OutputProfile.Id)],
-                    Icons = firstChannel.Icons?.Select(_ => new XmltvIcon
-                    {
-                        Src = settings.CurrentValue.LogoCache ? videoStreamConfig.Logo : videoStreamConfig.OGLogo
-                    }).ToList()
+                    Icons = icons
                 };
-
                 newChannels.Add(updatedChannel);
             }
 

@@ -922,4 +922,81 @@ public class XMLTVBuilderTests : IDisposable
         program.Rating.ShouldHaveSingleItem().Value.ShouldBe("TV-14");
         program.StarRating.ShouldHaveSingleItem().Value.ShouldBe("4/5");
     }
+
+    [Fact]
+    public void ProcessXML_WithEPGFallback_UsesEPGThumbWhenNoLogoSet()
+    {
+        // Arrange
+        var inputXml = XMLUtil.NewXMLTV;
+
+        //Simulate that nfo is populated with a value
+        string epgLogo = "epg-logo.png";
+        _customPlayListBuilderMock
+               .Setup(x => x.GetCustomPlayListLogoFromFileName(It.IsAny<string>()))
+               .Returns(epgLogo);
+
+        inputXml.Channels.Add(new XmltvChannel
+        {
+            Id = "source1",
+            DisplayNames = [new XmltvText { Text = "Source Channel" }]
+            // No Icons set
+        });
+
+        var config = new VideoStreamConfig
+        {
+            EPGId = "source1",
+            OutputProfile = new OutputProfileDto { Id = "target1" },
+            // No Logo or OGLogo set
+        };
+
+        // Act
+        var (channels, _) = _builder.ProcessXML(inputXml, [config]);
+
+        // Assert
+        channels.ShouldHaveSingleItem();
+        channels[0].Icons.ShouldNotBeNull();
+        channels[0].Icons.ShouldHaveSingleItem();
+        channels[0].Icons[0].Src.ShouldBe(epgLogo);
+    }
+
+    [Fact]
+    public void ProcessXML_WithEPGSourceUpdated_UpdatesChannelLogo()
+    {
+        // Arrange
+        var inputXml = XMLUtil.NewXMLTV;
+        inputXml.Channels.Add(new XmltvChannel
+        {
+            Id = "source1",
+            DisplayNames = [new XmltvText { Text = "Source Channel" }],
+        });
+        string initialLogo = "epg-logo-v1.png";
+        _customPlayListBuilderMock
+               .Setup(x => x.GetCustomPlayListLogoFromFileName(It.IsAny<string>()))
+               .Returns(initialLogo);
+        var config = new VideoStreamConfig
+        {
+            EPGId = "source1",
+            OutputProfile = new OutputProfileDto { Id = "target1" },
+            // No Logo or OGLogo set initially
+        };
+        // Act
+        var (channels, _) = _builder.ProcessXML(inputXml, [config]);
+        // Assert
+        channels.ShouldHaveSingleItem();
+        channels[0].Icons.ShouldNotBeNull();
+        channels[0].Icons.ShouldHaveSingleItem();
+        channels[0].Icons[0].Src.ShouldBe(initialLogo);
+        // Simulate EPG source update
+        string updatedLogo = "epg-logo-v2.png";
+        _customPlayListBuilderMock
+              .Setup(x => x.GetCustomPlayListLogoFromFileName(It.IsAny<string>()))
+              .Returns(updatedLogo);
+        // Act again after the "update"
+        var (updatedChannels, _) = _builder.ProcessXML(inputXml, [config]);
+        // Assert that the logo has been updated
+        updatedChannels.ShouldHaveSingleItem();
+        updatedChannels[0].Icons.ShouldNotBeNull();
+        updatedChannels[0].Icons.ShouldHaveSingleItem();
+        updatedChannels[0].Icons[0].Src.ShouldBe(updatedLogo);
+    }
 }
