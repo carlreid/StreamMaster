@@ -1,5 +1,6 @@
 ﻿using System.IO.Compression;
 using System.Net;
+using System.Net.Http;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -16,17 +17,27 @@ namespace StreamMaster.Infrastructure.Services
 {
     public class FileUtilService : IFileUtilService
     {
-        public HttpClient _httpClient = null!;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<FileUtilService> logger;
         private readonly ICacheManager cacheManager;
         private readonly IOptionsMonitor<Setting> settings;
 
-        public FileUtilService(ILogger<FileUtilService> logger, ICacheManager cacheManager, IOptionsMonitor<Setting> _settings)
+        public FileUtilService(IHttpClientFactory httpClientFactory, ILogger<FileUtilService> logger, ICacheManager cacheManager, IOptionsMonitor<Setting> _settings)
         {
+            _httpClientFactory = httpClientFactory;
             this.logger = logger;
             settings = _settings;
             this.cacheManager = cacheManager;
-            CreateHttpClient();
+        }
+
+        private HttpClient GetHttpClient()
+        {
+            var httpClient = _httpClientFactory.CreateClient(nameof(FileUtilService));
+
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(settings.CurrentValue.ClientUserAgent);
+            httpClient.DefaultRequestHeaders.ExpectContinue = true;
+
+            return httpClient;
         }
 
         public async Task<List<StationChannelName>?> ProcessStationChannelNamesAsync(EPGFile epgFile, bool? ignoreCache = false)
@@ -505,13 +516,11 @@ namespace StreamMaster.Infrastructure.Services
             {
                 string compression = settings.CurrentValue.DefaultCompression?.ToLower() ?? "none";
 
-                //using HttpClientHandler handler = new() { AllowAutoRedirect = true, MaxAutomaticRedirections = 10 };
-                //using HttpClient httpClient = new(handler);
-                //_httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+                using var httpClient = GetHttpClient();
 
                 Directory.CreateDirectory(Path.GetDirectoryName(fileName) ?? string.Empty); // Ensure directory exists
 
-                using HttpResponseMessage response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                using HttpResponseMessage response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode(); // Ensure success
 
                 await using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
@@ -742,20 +751,6 @@ namespace StreamMaster.Infrastructure.Services
             {
                 File.Delete(jsonPath);
             }
-        }
-
-        private void CreateHttpClient()
-        {
-            _httpClient = new(new HttpClientHandler()
-            {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                AllowAutoRedirect = true,
-            })
-            {
-                Timeout = TimeSpan.FromSeconds(240)
-            };
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(settings.CurrentValue.ClientUserAgent);
-            _httpClient.DefaultRequestHeaders.ExpectContinue = true;
         }
     }
 }

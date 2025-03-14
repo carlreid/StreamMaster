@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 
 using FluentValidation.AspNetCore;
@@ -23,6 +26,8 @@ using StreamMaster.Infrastructure.EF.PGSQL;
 using StreamMaster.Infrastructure.Services;
 using StreamMaster.Infrastructure.Services.Frontend;
 using StreamMaster.Infrastructure.Services.QueueService;
+using StreamMaster.SchedulesDirect.Services;
+using YamlDotNet.Serialization;
 
 namespace StreamMaster.API;
 
@@ -123,7 +128,29 @@ public static class ConfigureServices
 
         services.AddFluentValidationAutoValidation();
 
-        services.AddHttpClient();
+        services.AddHttpClient(nameof(FileUtilService), client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(300);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AllowAutoRedirect = true
+        });
+
+        services.AddHttpClient(nameof(HttpService), client =>
+        {
+            client.BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+            client.DefaultRequestHeaders.ExpectContinue = true;
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AllowAutoRedirect = true,
+        });
 
         services.AddControllersWithViews();
         services.AddRazorPages();
