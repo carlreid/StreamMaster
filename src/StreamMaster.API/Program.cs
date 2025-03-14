@@ -52,7 +52,7 @@ List<string> settingsFiles = BuildInfo.GetSettingFiles();
 
 // Set base configuration path
 string configPath = Directory.Exists(BuildInfo.SettingsFolder) ? BuildInfo.AppDataFolder : BuildInfo.StartUpPath;
-builder.Configuration.SetBasePath(configPath).AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.SetBasePath(configPath).AddEnvironmentVariables("StreamMaster_").AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
 // Load and validate settings
 LoadAndSetSettings<CommandProfileDict, CommandProfile>(BuildInfo.CommandProfileSettingsFile, SettingFiles.DefaultCommandProfileSetting);
