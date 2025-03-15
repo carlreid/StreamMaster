@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -11,9 +12,8 @@ using StreamMaster.Domain.Services;
 
 namespace StreamMaster.SchedulesDirect.Services;
 
-public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings> sdSettings, IOptionsMonitor<Setting> settings, IDataRefreshService dataRefreshService) : IHttpService
+public class HttpService(IHttpClientFactory httpClientFactory, ILogger<HttpService> logger, IOptionsMonitor<SDSettings> sdSettings, IOptionsMonitor<Setting> settings, IDataRefreshService dataRefreshService) : IHttpService
 {
-    private readonly HttpClient _httpClient = CreateHttpClient(settings);
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
 
     public string? Token { get; private set; }
@@ -42,7 +42,7 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                     : null
             };
 
-            using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using HttpResponseMessage response = await GetHttpClient().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 string content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -64,7 +64,7 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
 
         try
         {
-            HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            HttpResponseMessage response = await GetHttpClient().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 string content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -203,7 +203,7 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
             }
             ClearToken();
 
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+            HttpResponseMessage response = await GetHttpClient().PostAsJsonAsync(
                 "token",
                 new { username, password },
                 cancellationToken
@@ -217,9 +217,6 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                     Token = tokenResponse.Token;
                     TokenTimestamp = tokenResponse.Datetime;
                     GoodToken = true;
-
-                    _httpClient.DefaultRequestHeaders.Remove("token");
-                    _httpClient.DefaultRequestHeaders.Add("token", Token);
 
                     logger.LogInformation("Token refreshed successfully. Token={Token[..5]}...", Token[..5]);
                     sdSettings.CurrentValue.TokenErrorTimestamp = DateTime.MinValue;
@@ -273,22 +270,18 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
         logger.LogWarning("Token cleared.");
     }
 
-    private static HttpClient CreateHttpClient(IOptionsMonitor<Setting> settings)
+    private HttpClient GetHttpClient()
     {
-        HttpClient httpClient = new(new HttpClientHandler
-        {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-            AllowAutoRedirect = true,
-        })
-        {
-            BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/"),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+        var httpClient = httpClientFactory.CreateClient(nameof(HttpService));
 
-        httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
-        httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+        // Add token if available
+        if (!string.IsNullOrEmpty(Token))
+        {
+            httpClient.DefaultRequestHeaders.Remove("token");
+            httpClient.DefaultRequestHeaders.Add("token", Token);
+        }
+
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(settings.CurrentValue.ClientUserAgent);
-        httpClient.DefaultRequestHeaders.ExpectContinue = true;
 
         return httpClient;
     }
