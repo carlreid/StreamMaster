@@ -119,13 +119,18 @@ const SchedulesDirectStationDataSelector = () => {
 
 			const request = {} as SetStationsRequest;
 
-			request.Requests = selectedItems.map((station) => {
-				const request: StationRequest = {
-					Lineup: station.Lineup,
-					StationId: station.StationId,
-				};
-				return request;
-			});
+			request.Requests = selectedItems
+				.map((station) => {
+					if (!station.Lineup || !station.StationId) {
+						return;
+					}
+					const request: StationRequest = {
+						Lineup: station.Lineup,
+						StationId: station.StationId,
+					};
+					return request;
+				})
+				.filter((predicate) => predicate !== undefined);
 
 			SetStations(request)
 				.then(() => {})
