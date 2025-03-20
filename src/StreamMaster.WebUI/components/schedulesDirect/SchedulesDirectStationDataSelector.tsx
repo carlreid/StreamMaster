@@ -17,6 +17,23 @@ import type {
 } from "@lib/smAPI/smapiTypes";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+function imageBodyTemplate(data: StationPreview) {
+	if (!data?.Logo || data.Logo.Url === "") {
+		return <div />;
+	}
+
+	return (
+		<div className="flex flex-nowrap justify-content-center align-items-center p-0">
+			<img
+				loading="lazy"
+				alt={data.Logo.Url ?? "Logo"}
+				className="max-h-1rem max-w-full p-0"
+				src={`${encodeURI(data.Logo.Url ?? "")}`}
+			/>
+		</div>
+	);
+}
+
 const SchedulesDirectStationDataSelector = () => {
 	const dataKey = "SchedulesDirectSchedulesDataSelector";
 	const schedulesDirectGetSelectedStationIdsQuery = useGetSelectedStationIds();
@@ -143,23 +160,6 @@ const SchedulesDirectStationDataSelector = () => {
 		},
 		[originalSelectedItems, selectedItems],
 	);
-
-	function imageBodyTemplate(data: StationPreview) {
-		if (!data?.Logo || data.Logo.Url === "") {
-			return <div />;
-		}
-
-		return (
-			<div className="flex flex-nowrap justify-content-center align-items-center p-0">
-				<img
-					loading="lazy"
-					alt={data.Logo.Url ?? "Logo"}
-					className="max-h-1rem max-w-full p-0"
-					src={`${encodeURI(data.Logo.Url ?? "")}`}
-				/>
-			</div>
-		);
-	}
 
 	const columns = useMemo((): ColumnMeta[] => {
 		const columnConfigs: ColumnMeta[] = [
