@@ -68,7 +68,6 @@ const SchedulesDirectStationDataSelector = () => {
 		schedulesDirectGetSelectedStationIdsQuery.isLoading,
 		schedulesDirectGetSelectedStationIdsQuery.data,
 		stationPreviews.data,
-		setOriginalSelectedItems,
 		setSelectedItems,
 		stationPreviews.isLoading,
 	]);
