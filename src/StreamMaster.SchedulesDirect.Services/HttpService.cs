@@ -178,16 +178,16 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
 
     public async Task<bool> RefreshTokenAsync(CancellationToken cancellationToken)
     {
-        await _tokenSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        if (!IsReady)
-        {
-            GoodToken = false;
-            return false;
-        }
-
         try
         {
+            await _tokenSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!IsReady)
+            {
+                GoodToken = false;
+                return false;
+            }
+
             if (SMDT.UtcNow - TokenTimestamp < TimeSpan.FromMinutes(1))
             {
                 return true; // Token is still fresh
@@ -232,7 +232,11 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
             string content = await response.Content.ReadAsStringAsync(cancellationToken);
             HttpResponseMessage httpResponse = await HandleHttpResponseError(response, content);
 
-            sdSettings.CurrentValue.TokenErrorTimestamp = tokenResponse == null || tokenResponse.Code == 4004 || tokenResponse.Code == 4009 || tokenResponse.Code == 4005 ? SMDT.UtcNow.AddHours(24.0) : SMDT.UtcNow.AddHours(1.0);
+            sdSettings.CurrentValue.TokenErrorTimestamp =
+                tokenResponse == null ||
+                tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_LOCKOUT ||
+                tokenResponse.Code == (int)SDHttpResponseCode.TOO_MANY_LOGINS ||
+                tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_DISABLED ? SMDT.UtcNow.AddHours(24.0) : SMDT.UtcNow.AddMinutes(1.0);
             SettingsHelper.UpdateSetting(sdSettings.CurrentValue);
             await dataRefreshService.RefreshSDReady();
             logger.LogError("Failed to fetch token. Status code: {StatusCode} {reason} {message}", httpResponse.StatusCode, httpResponse.ReasonPhrase, tokenResponse?.Message ?? "");
