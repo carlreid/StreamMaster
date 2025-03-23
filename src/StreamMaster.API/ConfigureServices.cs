@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Headers;
 using System.Reflection;
 
 using FluentValidation.AspNetCore;
@@ -23,6 +25,7 @@ using StreamMaster.Infrastructure.EF.PGSQL;
 using StreamMaster.Infrastructure.Services;
 using StreamMaster.Infrastructure.Services.Frontend;
 using StreamMaster.Infrastructure.Services.QueueService;
+using StreamMaster.SchedulesDirect.Services;
 
 namespace StreamMaster.API;
 
@@ -30,17 +33,6 @@ public static class ConfigureServices
 {
     public static IServiceCollection AddWebUIServices(this IServiceCollection services, WebApplicationBuilder builder, bool DBDebug)
     {
-        // Register SMLoggerProvider with DI
-        //services.AddSingleton<ILoggerProvider, SMLoggerProvider>(provider =>
-        //    new SMLoggerProvider(provider.GetRequiredService<IFileLoggingServiceFactory>()));
-
-        //_ = services.AddSingleton(provider =>
-        //{
-        //    IFileLoggingServiceFactory factory = provider.GetRequiredService<IFileLoggingServiceFactory>();
-        //    return factory.Create("SMLogger");
-        //});
-        //services.AddSingleton<ILoggerFactory, LoggerFactory>();
-
         builder.Services.AddSingleton<ISMWebSocketManager, SMWebSocketManager>();
 
         services.AddLogging(loggingBuilder =>
@@ -55,16 +47,6 @@ public static class ConfigureServices
             loggingBuilder.AddConsole();
             loggingBuilder.AddDebug();
             loggingBuilder.AddConfiguration(builder.Configuration.GetSection("Logging"));
-            //loggingBuilder.AddProvider(new SMLoggerProvider(new FileLoggingServiceFactory(builder.Configuration)));
-            //loggingBuilder.AddProvider(new StatsLoggerProvider());
-
-            // GetOrAdd specific filters for StatsLoggerProvider
-            //loggingBuilder.AddFilter<StatsLoggerProvider>((category, _) =>
-            //{
-            //    // List of classes to use with CustomLogger
-            //    List<string> classesToLog = ["BroadcastService"];
-            //    return category != null && classesToLog.Any(c => category.Contains(c, StringComparison.OrdinalIgnoreCase));
-            //});
 
             ServiceProvider serviceProvider = loggingBuilder.Services.BuildServiceProvider();
             ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
@@ -97,14 +79,11 @@ public static class ConfigureServices
                 builder =>
                 builder
                 .AllowAnyOrigin()
-                //.WithMethods("GET", "OPTIONS")
                 .AllowAnyMethod()
                 .AllowAnyHeader());
         });
 
         services.AddSession();
-
-        //services.AddDatabaseDeveloperPageExceptionFilter();
 
         Assembly assembly = Assembly.Load("StreamMaster.Application");
 
@@ -123,7 +102,29 @@ public static class ConfigureServices
 
         services.AddFluentValidationAutoValidation();
 
-        services.AddHttpClient();
+        services.AddHttpClient(nameof(FileUtilService), client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(300);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AllowAutoRedirect = true
+        });
+
+        services.AddHttpClient(nameof(HttpService), client =>
+        {
+            client.BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+            client.DefaultRequestHeaders.ExpectContinue = true;
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            AllowAutoRedirect = true,
+        });
 
         services.AddControllersWithViews();
         services.AddRazorPages();

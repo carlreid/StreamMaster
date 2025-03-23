@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -11,81 +10,140 @@ using StreamMaster.Domain.Services;
 
 namespace StreamMaster.SchedulesDirect.Services;
 
-public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings> sdSettings, IOptionsMonitor<Setting> settings, IDataRefreshService dataRefreshService) : IHttpService
+public class HttpService : IHttpService, IDisposable
 {
-    private readonly HttpClient _httpClient = CreateHttpClient(settings);
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<HttpService> _logger;
+    private readonly IOptionsMonitor<SDSettings> _sdSettings;
+    private readonly IOptionsMonitor<Setting> _settings;
+    private readonly IDataRefreshService _dataRefreshService;
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
+    private bool _disposed;
 
     public string? Token { get; private set; }
     public DateTime TokenTimestamp { get; private set; }
     public bool GoodToken { get; private set; }
-    public bool IsReady => sdSettings.CurrentValue.TokenErrorTimestamp < SMDT.UtcNow;
+    public bool IsReady => !_disposed && _sdSettings.CurrentValue.TokenErrorTimestamp < SMDT.UtcNow;
+
+    public HttpService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<HttpService> logger,
+        IOptionsMonitor<SDSettings> sdSettings,
+        IOptionsMonitor<Setting> settings,
+        IDataRefreshService dataRefreshService)
+    {
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sdSettings = sdSettings ?? throw new ArgumentNullException(nameof(sdSettings));
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _dataRefreshService = dataRefreshService ?? throw new ArgumentNullException(nameof(dataRefreshService));
+    }
 
     public async Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default)
     {
-        if (!sdSettings.CurrentValue.SDEnabled)
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(HttpService));
+        }
+
+        if (!_sdSettings.CurrentValue.SDEnabled)
         {
             return default;
         }
 
-        if (!await ValidateTokenAsync(cancellationToken: cancellationToken))
+        if (!await ValidateTokenAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             throw new TokenValidationException("Token validation failed. Cannot proceed with the request.");
         }
 
         try
         {
-            using HttpRequestMessage request = new(new HttpMethod(method.ToString()), endpoint)
-            {
-                Content = payload != null
-                    ? new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-                    : null
-            };
+            using var request = new HttpRequestMessage(new HttpMethod(method.ToString()), endpoint);
 
-            using HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            if (payload != null)
             {
-                string content = await response.Content.ReadAsStringAsync(cancellationToken);
-                await HandleHttpResponseError(response, content);
+                request.Content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
             }
 
-            return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+            using var httpClient = GetHttpClient();
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            using var response = await httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                linkedCts.Token).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                HandleHttpResponseError(response, content);
+                return default;
+            }
+
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException ex)
         {
-            logger.LogError(ex, "Error occurred during HTTP request to {Endpoint}", endpoint);
-            return default;
+            _logger.LogWarning(ex, "Request to {Endpoint} was cancelled or timed out", endpoint);
+            throw;
+        }
+        catch (Exception ex) when (ex is not TokenValidationException)
+        {
+            _logger.LogError(ex, "Error occurred during HTTP request to {Endpoint}", endpoint);
+            throw;
         }
     }
 
     public async Task<HttpResponseMessage> SendRawRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
     {
-        await ValidateTokenAsync(cancellationToken: cancellationToken);
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(HttpService));
+        }
+
+        await ValidateTokenAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         try
         {
-            HttpResponseMessage response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using var httpClient = GetHttpClient();
+            var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            var clonedRequest = CloneHttpRequest(request);
+            HttpResponseMessage response = await httpClient
+                .SendAsync(clonedRequest, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token)
+                .ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                string content = await response.Content.ReadAsStringAsync(cancellationToken);
-                await HandleHttpResponseError(response, content);
+                string content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return HandleHttpResponseError(response, content);
             }
 
             return response;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Error sending raw HTTP request to {Uri}", request.RequestUri);
+            _logger.LogError(ex, "Error sending raw HTTP request to {Uri}", request.RequestUri);
+            throw;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Request to {Uri} was cancelled or timed out", request.RequestUri);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error sending raw HTTP request to {Uri}", request.RequestUri);
+            _logger.LogError(ex, "Unexpected error sending raw HTTP request to {Uri}", request.RequestUri);
             throw;
         }
     }
 
-    private async Task<HttpResponseMessage> HandleHttpResponseError(HttpResponseMessage response, string? content)
+    private HttpResponseMessage HandleHttpResponseError(HttpResponseMessage response, string? content)
     {
         string? tokenUsed = null;
 
@@ -102,8 +160,11 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                 SDHttpResponseCode sdCode = (SDHttpResponseCode)err.Code;
                 if (sdCode == SDHttpResponseCode.TOKEN_INVALID)
                 {
-                    logger.LogError("SDToken is invalid {Token} {Length}", tokenUsed, tokenUsed?.Length ?? 0);
+                    _logger.LogError("SDToken is invalid {Token} {Length}",
+                        tokenUsed?[..Math.Min(5, tokenUsed.Length)],
+                        tokenUsed?.Length ?? 0);
                 }
+
                 switch (sdCode)
                 {
                     case SDHttpResponseCode.SERVICE_OFFLINE:
@@ -143,7 +204,7 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                     case SDHttpResponseCode.UNKNOWN_USER:
                         response.StatusCode = HttpStatusCode.Unauthorized;
                         response.ReasonPhrase = "Unauthorized";
-                        this.ClearToken();  // Changed from RefreshTokenAsync
+                        ClearToken();
                         break;
 
                     case SDHttpResponseCode.TOO_MANY_LOGINS:
@@ -163,7 +224,7 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
         if (response.StatusCode != HttpStatusCode.NotModified)
         {
             string tokenUsedShort = tokenUsed?.Length >= 5 ? tokenUsed[..5] : tokenUsed ?? string.Empty;
-            logger.LogError(
+            _logger.LogError(
                 "{RequestPath}: {StatusCode} {ReasonPhrase} : Token={TokenUsed}...{Content}",
                 response.RequestMessage?.RequestUri?.AbsolutePath.Replace("https://json.schedulesdirect.org/20141201/", "/"),
                 (int)response.StatusCode,
@@ -178,6 +239,11 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
 
     public async Task<bool> RefreshTokenAsync(CancellationToken cancellationToken)
     {
+        if (_disposed)
+        {
+            return false;
+        }
+
         try
         {
             await _tokenSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -188,28 +254,35 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                 return false;
             }
 
-            if (SMDT.UtcNow - TokenTimestamp < TimeSpan.FromMinutes(1))
+            // Avoid unnecessary refreshes if token is still fresh
+            if (!string.IsNullOrEmpty(Token) &&
+                GoodToken &&
+                SMDT.UtcNow - TokenTimestamp < TimeSpan.FromMinutes(1))
             {
-                return true; // Token is still fresh
+                return true;
             }
 
-            string username = sdSettings.CurrentValue.SDUserName;
-            string password = sdSettings.CurrentValue.SDPassword;
+            string username = _sdSettings.CurrentValue.SDUserName;
+            string password = _sdSettings.CurrentValue.SDPassword;
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                logger.LogWarning("Username or password is missing.");
+                _logger.LogWarning("Username or password is missing.");
                 return false;
             }
             ClearToken();
 
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+            using var httpClient = GetHttpClient();
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            using var response = await httpClient.PostAsJsonAsync(
                 "token",
                 new { username, password },
-                cancellationToken
+                linkedCts.Token
             ).ConfigureAwait(false);
 
-            TokenResponse? tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>(cancellationToken: cancellationToken);
+            TokenResponse? tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>(cancellationToken: linkedCts.Token);
             if (response.IsSuccessStatusCode)
             {
                 if (tokenResponse?.Code == 0 && !string.IsNullOrEmpty(tokenResponse.Token))
@@ -218,28 +291,30 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
                     TokenTimestamp = tokenResponse.Datetime;
                     GoodToken = true;
 
-                    _httpClient.DefaultRequestHeaders.Remove("token");
-                    _httpClient.DefaultRequestHeaders.Add("token", Token);
-
-                    logger.LogInformation("Token refreshed successfully. Token={Token[..5]}...", Token[..5]);
-                    sdSettings.CurrentValue.TokenErrorTimestamp = DateTime.MinValue;
-                    SettingsHelper.UpdateSetting(sdSettings.CurrentValue);
-                    await dataRefreshService.RefreshSDReady();
+                    _logger.LogInformation("Token refreshed successfully. Token={Token}...",
+                        Token?[..Math.Min(5, Token.Length)]);
+                    _sdSettings.CurrentValue.TokenErrorTimestamp = DateTime.MinValue;
+                    SettingsHelper.UpdateSetting(_sdSettings.CurrentValue);
+                    await _dataRefreshService.RefreshSDReady().ConfigureAwait(false);
                     return true;
                 }
             }
 
-            string content = await response.Content.ReadAsStringAsync(cancellationToken);
-            HttpResponseMessage httpResponse = await HandleHttpResponseError(response, content);
+            string content = await response.Content.ReadAsStringAsync(linkedCts.Token);
+            using HttpResponseMessage httpResponse = HandleHttpResponseError(response, content);
 
-            sdSettings.CurrentValue.TokenErrorTimestamp =
+            _sdSettings.CurrentValue.TokenErrorTimestamp =
                 tokenResponse == null ||
                 tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_LOCKOUT ||
                 tokenResponse.Code == (int)SDHttpResponseCode.TOO_MANY_LOGINS ||
-                tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_DISABLED ? SMDT.UtcNow.AddHours(24.0) : SMDT.UtcNow.AddMinutes(1.0);
-            SettingsHelper.UpdateSetting(sdSettings.CurrentValue);
-            await dataRefreshService.RefreshSDReady();
-            logger.LogError("Failed to fetch token. Status code: {StatusCode} {reason} {message}", httpResponse.StatusCode, httpResponse.ReasonPhrase, tokenResponse?.Message ?? "");
+                tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_DISABLED
+                    ? SMDT.UtcNow.AddHours(24.0)
+                    : SMDT.UtcNow.AddMinutes(1.0);
+
+            SettingsHelper.UpdateSetting(_sdSettings.CurrentValue);
+            await _dataRefreshService.RefreshSDReady().ConfigureAwait(false);
+            _logger.LogError("Failed to fetch token. Status code: {StatusCode} {reason} {message}",
+                httpResponse.StatusCode, httpResponse.ReasonPhrase, tokenResponse?.Message ?? "");
             return false;
         }
         finally
@@ -250,22 +325,43 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
 
     public async Task<bool> ValidateTokenAsync(bool forceReset = false, CancellationToken cancellationToken = default)
     {
-        if (!sdSettings.CurrentValue.SDEnabled)
+        if (_disposed)
         {
             return false;
         }
 
-        if (forceReset || SMDT.UtcNow - TokenTimestamp > TimeSpan.FromHours(23))
+        if (!_sdSettings.CurrentValue.SDEnabled)
         {
-            bool refreshed = await RefreshTokenAsync(cancellationToken);
-            if (!refreshed)
-            {
-                logger.LogError("Token validation failed. Unable to refresh token.");
-                return false;
-            }
+            return false;
         }
 
-        return GoodToken;
+        // Prevent multiple concurrent refreshes with a semaphore
+        await _tokenSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (forceReset || string.IsNullOrEmpty(Token) || !GoodToken || SMDT.UtcNow - TokenTimestamp > TimeSpan.FromHours(23))
+            {
+                // Release semaphore before long-running refresh
+                _tokenSemaphore.Release();
+                bool refreshed = await RefreshTokenAsync(cancellationToken).ConfigureAwait(false);
+                if (!refreshed)
+                {
+                    _logger.LogError("Token validation failed. Unable to refresh token.");
+                    return false;
+                }
+                return true;
+            }
+
+            return GoodToken;
+        }
+        finally
+        {
+            // Ensure semaphore is released if we didn't release it earlier
+            if (_tokenSemaphore.CurrentCount == 0)
+            {
+                _tokenSemaphore.Release();
+            }
+        }
     }
 
     public void ClearToken()
@@ -273,27 +369,61 @@ public class HttpService(ILogger<HttpService> logger, IOptionsMonitor<SDSettings
         Token = null;
         GoodToken = false;
         TokenTimestamp = DateTime.MinValue;
-        //_httpClient.DefaultRequestHeaders.Remove("token");
-        logger.LogWarning("Token cleared.");
+        _logger.LogWarning("Token cleared.");
     }
 
-    private static HttpClient CreateHttpClient(IOptionsMonitor<Setting> settings)
+    private HttpClient GetHttpClient()
     {
-        HttpClient httpClient = new(new HttpClientHandler
+        if (_disposed)
         {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-            AllowAutoRedirect = true,
-        })
-        {
-            BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/"),
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+            throw new ObjectDisposedException(nameof(HttpService));
+        }
 
-        httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
-        httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(settings.CurrentValue.ClientUserAgent);
-        httpClient.DefaultRequestHeaders.ExpectContinue = true;
+        var httpClient = _httpClientFactory.CreateClient(nameof(HttpService));
+
+        if (!string.IsNullOrEmpty(Token))
+        {
+            httpClient.DefaultRequestHeaders.Remove("token");
+            httpClient.DefaultRequestHeaders.Add("token", Token);
+        }
+
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_settings.CurrentValue.ClientUserAgent);
 
         return httpClient;
+    }
+
+    private static HttpRequestMessage CloneHttpRequest(HttpRequestMessage request)
+    {
+        var clone = new HttpRequestMessage(request.Method, request.RequestUri)
+        {
+            Content = request.Content,
+            Version = request.Version
+        };
+
+        foreach (var header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        return clone;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            _tokenSemaphore.Dispose();
+        }
+
+        _disposed = true;
     }
 }
