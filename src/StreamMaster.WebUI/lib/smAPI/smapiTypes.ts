@@ -486,6 +486,7 @@ export interface SDSettings
 	SeriesPosterAspect: string;
 	SportsImages: boolean;
 	TokenErrorTimestamp: any;
+	UserAgent: string;
 	XmltvAddFillerData: boolean;
 	XmltvExtendedInfoInTitleDescriptions: boolean;
 	XmltvFillerProgramLength: number;

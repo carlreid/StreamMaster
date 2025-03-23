@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
@@ -80,6 +81,16 @@ ConfigureSettings<SDSettings>(builder);
 ConfigureSettings<CommandProfileDict>(builder);
 ConfigureSettings<OutputProfileDict>(builder);
 ConfigureSettings<CustomLogoDict>(builder);
+
+// Update ScheduleDirect UserAgent to reflect assembly version
+var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0";
+SDSettings? sdSettings = SettingsHelper.GetSetting<SDSettings>(BuildInfo.SDSettingsFile);
+if (sdSettings != null)
+{
+    // Update the UserAgent with the version
+    sdSettings.UserAgent = $"StreamMaster/{version}";
+    SettingsHelper.UpdateSetting(sdSettings);
+}
 
 void LoadAndSetSettings<TDict, TProfile>(string settingsFile, TDict defaultSetting)
     where TDict : IProfileDict<TProfile>

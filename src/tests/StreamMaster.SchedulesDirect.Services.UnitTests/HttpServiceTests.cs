@@ -702,11 +702,78 @@ public class HttpServiceTests
         result.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task SendRequestAsync_SetsCorrectUserAgent()
+    {
+        // Arrange
+        var mockLogger = new Mock<ILogger<HttpService>>();
+        var mockSDSettings = new Mock<IOptionsMonitor<SDSettings>>();
+        var mockDataRefreshService = new Mock<IDataRefreshService>();
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
+        var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+
+        var appVersion = "1.2.3.Sha.BADC0FFEE0DDF00D000000000000000000000000";
+        var sdSettings = new SDSettings
+        {
+            SDEnabled = true,
+            TokenErrorTimestamp = DateTime.MinValue,
+            SDUserName = "testuser",
+            SDPassword = "testpass",
+            UserAgent = $"StreamMaster/{appVersion}"
+        };
+
+        mockSDSettings.Setup(x => x.CurrentValue).Returns(sdSettings);
+        mockDataRefreshService.Setup(x => x.RefreshSDReady()).Returns(Task.CompletedTask);
+
+        // Capture the actual user agent sent in the request
+        string capturedUserAgent = null;
+
+        mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) =>
+            {
+                if (req.Headers.UserAgent.Any())
+                {
+                    capturedUserAgent = string.Join(" ", req.Headers.UserAgent);
+                }
+            })
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{}")
+            });
+
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object)
+        {
+            BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/")
+        };
+
+        mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var service = new HttpService(
+            mockHttpClientFactory.Object,
+            mockLogger.Object,
+            mockSDSettings.Object,
+            mockDataRefreshService.Object);
+
+        // Set token to avoid refresh
+        SetTokenProperties(service);
+
+        // Act
+        await service.SendRequestAsync<object>(APIMethod.GET, "test-endpoint");
+
+        // Assert
+        capturedUserAgent.ShouldNotBeNull();
+        capturedUserAgent.ShouldBe($"StreamMaster/{appVersion}");
+    }
+
     private (HttpService service, SDSettings settings, Mock<IHttpClientFactory> mockHttpClientFactory, Mock<HttpMessageHandler> mockHttpMessageHandler, Mock<IDataRefreshService> mockDataRefreshService) CreateServiceAndMocks()
     {
         var mockLogger = new Mock<ILogger<HttpService>>();
         var mockSDSettings = new Mock<IOptionsMonitor<SDSettings>>();
-        var mockSettings = new Mock<IOptionsMonitor<Setting>>();
         var mockDataRefreshService = new Mock<IDataRefreshService>();
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
@@ -720,7 +787,6 @@ public class HttpServiceTests
         };
 
         mockSDSettings.Setup(x => x.CurrentValue).Returns(sdSettings);
-        mockSettings.Setup(x => x.CurrentValue).Returns(new Setting { ClientUserAgent = "TestUserAgent" });
         mockDataRefreshService.Setup(x => x.RefreshSDReady()).Returns(Task.CompletedTask);
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object)
@@ -734,7 +800,6 @@ public class HttpServiceTests
             mockHttpClientFactory.Object,
             mockLogger.Object,
             mockSDSettings.Object,
-            mockSettings.Object,
             mockDataRefreshService.Object);
 
         return (service, sdSettings, mockHttpClientFactory, mockHttpMessageHandler, mockDataRefreshService);

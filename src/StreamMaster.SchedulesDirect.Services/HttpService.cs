@@ -15,7 +15,6 @@ public class HttpService : IHttpService, IDisposable
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<HttpService> _logger;
     private readonly IOptionsMonitor<SDSettings> _sdSettings;
-    private readonly IOptionsMonitor<Setting> _settings;
     private readonly IDataRefreshService _dataRefreshService;
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
     private bool _disposed;
@@ -29,13 +28,11 @@ public class HttpService : IHttpService, IDisposable
         IHttpClientFactory httpClientFactory,
         ILogger<HttpService> logger,
         IOptionsMonitor<SDSettings> sdSettings,
-        IOptionsMonitor<Setting> settings,
         IDataRefreshService dataRefreshService)
     {
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sdSettings = sdSettings ?? throw new ArgumentNullException(nameof(sdSettings));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _dataRefreshService = dataRefreshService ?? throw new ArgumentNullException(nameof(dataRefreshService));
     }
 
@@ -387,7 +384,11 @@ public class HttpService : IHttpService, IDisposable
             httpClient.DefaultRequestHeaders.Add("token", Token);
         }
 
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(_settings.CurrentValue.ClientUserAgent);
+        httpClient.DefaultRequestHeaders.UserAgent.Clear();
+        string userAgent = _sdSettings.CurrentValue.UserAgent ?? "StreamMaster/1.0";
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+
+        httpClient.Timeout = TimeSpan.FromSeconds(30);
 
         return httpClient;
     }
