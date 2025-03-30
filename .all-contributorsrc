@@ -8,6 +8,15 @@
   "commitConvention": "angular",
   "contributors": [
     {
+      "login": "carlreid",
+      "name": "Carl Reid",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33623601?v=4",
+      "profile": "https://www.carlreid.dk",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
       "login": "Aandree5",
       "name": "Andre Silva",
       "avatar_url": "https://avatars.githubusercontent.com/u/32734153?v=4",
@@ -51,7 +60,7 @@
       "contributions": [
         "code"
       ]
-    }
+    },
     {
       "login": "jackydec",
       "name": "jackydec",
