@@ -185,7 +185,7 @@ export const RootSideBar = () => {
 					data-pr-position="right"
 					data-pr-tooltip={settings.Release ?? ""}
 				>
-					<div className="sm-text-xs">{settings.Version ?? ""}</div>
+					<div className="sm-text-xs">{settings.Release ?? ""}</div>
 				</div>
 			</div>
 		</div>
