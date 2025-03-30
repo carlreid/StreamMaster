@@ -1,0 +1,26 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "carlreid",
+      "name": "Carl Reid",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33623601?v=4",
+      "profile": "https://www.carlreid.dk",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "StreamMaster",
+  "projectOwner": "carlreid"
+}
