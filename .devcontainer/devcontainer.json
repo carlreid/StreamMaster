@@ -1,0 +1,46 @@
+{
+	"name": "StreamMaster Development Environment",
+	"dockerComposeFile": "development-docker-compose.yml",
+	"service": "streammaster-app",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		},
+		"ghcr.io/devcontainers/features/dotnet:1": {
+			"version": "9.0"
+		},
+		"ghcr.io/devcontainers-extra/features/ffmpeg-apt-get:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-dotnettools.vscode-dotnet-runtime",
+				"ms-dotnettools.csdevkit",
+				"biomejs.biome"
+			],
+			"settings": {
+				"editor.formatOnSave": true,
+				"omnisharp.enableRoslynAnalyzers": true
+			}
+		}
+	},
+	"forwardPorts": [
+		7095,
+		3000,
+		5432
+	],
+	"portsAttributes": {
+		"7095": {
+			"protocol": "http",
+			"label": ".NET API"
+		},
+		"3000": {
+			"protocol": "http",
+			"label": "Web UI (Vite)"
+		},
+		"5432": {
+			"label": "PostgreSQL"
+		}
+	}
+}

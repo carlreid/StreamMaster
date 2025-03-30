@@ -63,6 +63,7 @@ public static class ConfigureServices
                 builder =>
                 builder
                 .WithOrigins("http://localhost:3000")
+                .WithOrigins("http://127.0.0.1:3000")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()

@@ -2,48 +2,141 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (web)",
+      "name": "Backend: Run API",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/StreamMasterAPI/bin/Debug/net7.0/StreamMasterAPI.dll",
+      "program": "${workspaceFolder}/src/StreamMaster.API/bin/Debug/net9.0/StreamMaster.API.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/StreamMasterAPI",
+      "cwd": "${workspaceFolder}/src/StreamMaster.API",
       "stopAtEntry": false,
       "serverReadyAction": {
         "action": "openExternally",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s/swagger",
       },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "sourceFileMap": {
-        "/Views": "${workspaceFolder}/Views"
+        "/Views": "${workspaceFolder}/src/Views"
       }
     },
     {
-      "name": ".NET Core Attach",
+      "name": "Backend: Run Unit Tests",
       "type": "coreclr",
-      "request": "attach"
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}",
+        "--logger:\"console;verbosity=detailed\"",
+        "--no-build"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "internalConsoleOptions": "openOnSessionStart"
     },
     {
-      "name": "Docker .NET Launch",
-      "type": "docker",
+      "name": "Web UI: Run Dev (Standard)",
+      "type": "node",
       "request": "launch",
-      "preLaunchTask": "docker-run: debug",
-      "netCore": {
-        "appProject": "${workspaceFolder}/StreamMasterAPI/StreamMasterAPI.csproj"
+      "cwd": "${workspaceFolder}/src/StreamMaster.WebUI",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "serverReadyAction": {
+        "pattern": "Local:.+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "restart": true
+    },
+    {
+      "name": "Web UI: Run Dev (Polling)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/src/StreamMaster.WebUI",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--config",
+        "vite.polling.config.ts"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "serverReadyAction": {
+        "pattern": "Local:.+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "restart": true
+    },
+    {
+      "name": "Web UI: Install packages",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/src/StreamMaster.WebUI",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "install"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "Web UI: Clean Install",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/src/StreamMaster.WebUI",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "echo '🧹 Cleaning up old dependencies...' && rm -rf node_modules && echo '📄 Removing package-lock.json...' && rm -f package-lock.json && echo '📦 Installing fresh dependencies...' && npm install && echo '✅ Clean install completed successfully!'"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack: Run (Standard)",
+      "configurations": [
+        "Backend: Run API",
+        "Web UI: Run Dev (Standard)"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "group": "fullstack",
+        "order": 1,
+        "hidden": false
       }
     },
     {
-      "name": "Docker Node.js Launch",
-      "type": "docker",
-      "request": "launch",
-      "preLaunchTask": "docker-run: debug",
-      "platform": "node",
-      "node": {
-        "package": "${workspaceFolder}/StreamMaster.WebUI/package.json",
-        "localRoot": "${workspaceFolder}/StreamMaster.WebUI"
+      "name": "Full Stack: Run (Polling)",
+      "configurations": [
+        "Backend: Run API",
+        "Web UI: Run Dev (Polling)"
+      ],
+      "stopAll": true,
+      "presentation": {
+        "group": "fullstack",
+        "order": 2,
+        "hidden": false
       }
     }
   ]

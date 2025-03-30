@@ -1,0 +1,64 @@
+services:
+  streammaster-app:
+    container_name: streammaster-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+
+    volumes:
+      - ../..:/workspaces:cached
+      - node_modules:/workspaces/${localWorkspaceFolderBasename}/node_modules
+      - streammaster-config:/config
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+    ports:
+      - "7095:7095" # .NET API port
+      - "3000:3000" # Vite Web UI
+
+    user: "1000:1000"
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:7095
+      POSTGRES_HOST: streammaster-db
+      POSTGRES_PASSWORD: sm123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: StreamMaster
+
+    depends_on:
+      - streammaster-db
+
+    networks:
+      - streammaster-network
+
+  streammaster-db:
+    container_name: streammaster-postgres
+    image: postgres:14.3
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: sm123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: StreamMaster
+
+    ports:
+      # Forward PostgreSQL port
+      - "5432:5432"
+
+    networks:
+      - streammaster-network
+
+volumes:
+  postgres-data:
+    name: streammaster-postgres-data
+  node_modules:
+    name: streammaster-node-modules
+  streammaster-config:
+    name: streammaster-config
+
+networks:
+  streammaster-network:
+    name: streammaster-network
