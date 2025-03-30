@@ -12,6 +12,7 @@
 		"axios": "^1.8.4",
 		"crypto-js": "^4.2.0",
 		"framer-motion": "^12.5.0",
+		"hls.js": "^1.6.0",
 		"i18next": "^24.2.3",
 		"i18next-browser-languagedetector": "^8.0.4",
 		"json-edit-react": "^1.24.0",
