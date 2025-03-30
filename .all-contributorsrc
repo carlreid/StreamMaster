@@ -43,6 +43,15 @@
         "code"
       ]
     }
+    {
+      "login": "jbf154",
+      "name": "jbf154",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16122392?v=4",
+      "profile": "https://github.com/jbf154",
+      "contributions": [
+        "code"
+      ]
+    }
   ],
   "contributorsPerLine": 7,
   "skipCi": true,
