@@ -1,4 +1,7 @@
 <p align="center" width="100%">
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-0-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
     <img src="https://raw.githubusercontent.com/carlreid/StreamMaster/refs/heads/main/src/StreamMaster.WebUI/public/images/streammaster_logo.png" alt="StreamMaster Logo"/>
     <H1 align="center" width="100%">StreamMaster</H1>
 </p>
@@ -52,10 +55,24 @@ View available releases at our [container registry](https://github.com/carlreid/
 
 - **Issues**: Bug reports and feature requests ([create an issue](https://github.com/carlreid/StreamMaster/issues))
 - **Discussions**: Community feedback and ideas ([open a discussion](https://github.com/carlreid/StreamMaster/discussions))
-- **Development**: Pull requests welcome
+- **Development**: Pull requests welcome (read more about [how to contribute](https://github.com/carlreid/StreamMaster/blob/main/.github/CONTRIBUTING.md))
 
 ---
 
 *This repository is a fork of the original SenexCrenshaw/StreamMaster project, which was discontinued(?) in early 2025.*
 
 *For historical reference, see the original [README](README_old.md).*
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

@@ -69,7 +69,8 @@
 		"test": "vitest run",
 		"watch": "vitest watch",
 		"coverage": "vitest run --coverage",
-		"update-dependencies": "npx -y npm-check-updates -u"
+		"update-dependencies": "npx -y npm-check-updates -u",
+		"give-credit": "node scripts/parse-contributors.cjs"
 	},
 	"version": "0.1.0"
 }
