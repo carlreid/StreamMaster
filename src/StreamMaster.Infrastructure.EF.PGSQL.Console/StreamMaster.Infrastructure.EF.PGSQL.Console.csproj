@@ -7,6 +7,9 @@
 		<GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
 	</PropertyGroup>
 	<ItemGroup>
+	  <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+	</ItemGroup>
+	<ItemGroup>
 	  <ProjectReference Include="..\StreamMaster.Infrastructure.EF.PGSQL\StreamMaster.Infrastructure.EF.PGSQL.csproj" />
 	</ItemGroup>
 </Project>
