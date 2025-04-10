@@ -34,6 +34,7 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
 
             using var registration = cancellationToken.Register(() =>
             {
+                logger.LogDebug("Cancellation requested for Stream process");
                 GracefullyTerminateProcess();
             });
 
@@ -46,7 +47,20 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
                 return new GetStreamResult(null, -1, error);
             }
 
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                try
+                {
+                    Process.Start("setpgrp", $"{_process.Id}");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to set process group for {ProcessId}", _process.Id);
+                }
+            }
+
             string stderrFilePath = Path.Combine(BuildInfo.CommandErrorFolder, $"stderr_{_process.Id}.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(stderrFilePath)!);
             errorWriter = new StreamWriter(stderrFilePath, append: true, Encoding.UTF8);
 
             // Clean up older logs to keep only the latest 10
@@ -64,6 +78,7 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
                 }
             };
             _process.BeginErrorReadLine();
+            _process.EnableRaisingEvents = true; // Ensure Exited event is raised
             _process.Exited += Process_Exited;
 
             stopwatch.Stop();
@@ -242,6 +257,16 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
         process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
+        process.StartInfo.StandardErrorEncoding = Encoding.UTF8;
+        process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            process.StartInfo.Environment["SM_PROCESS_ID"] = process.Id.ToString();
+            process.StartInfo.Environment["SM_PROCESS_TYPE"] = "STREAM";
+        }
+
+        process.EnableRaisingEvents = true;
     }
 
     /// <summary>

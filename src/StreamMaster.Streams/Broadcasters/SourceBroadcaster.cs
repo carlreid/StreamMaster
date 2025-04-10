@@ -106,11 +106,14 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
 
         this.SMStreamInfo = SMStreamInfo;
 
+        // Start a new streaming task
+        _cancellationTokenSource = new CancellationTokenSource();
+
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
             (Stream? stream, int processId, ProxyStreamError? error) =
-                await streamFactory.GetStream(SMStreamInfo, cancellationToken).ConfigureAwait(false);
+                await streamFactory.GetStream(SMStreamInfo, _cancellationTokenSource.Token).ConfigureAwait(false);
             stopwatch.Stop();
             if (stream == null || error != null)
             {
@@ -118,8 +121,6 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
                 return 0;
             }
 
-            // Start a new streaming task
-            _cancellationTokenSource = new CancellationTokenSource();
             _streamingTask = Task.Run(() => RunPipelineAsync(stream, SMStreamInfo.Name, cancellationToken: _cancellationTokenSource.Token), _cancellationTokenSource.Token);
             return stopwatch.ElapsedMilliseconds;
         }
@@ -191,6 +192,11 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
                 {
                     linkedCts?.Dispose();
                     timeoutCts?.Dispose();
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
                 }
 
                 if (bytesRead == 0)
