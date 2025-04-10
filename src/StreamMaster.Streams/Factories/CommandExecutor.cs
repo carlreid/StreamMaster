@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace StreamMaster.Streams.Factories;
@@ -30,6 +31,11 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
 
             _process = new Process();
             ConfigureProcess(_process, exec, options);
+
+            using var registration = cancellationToken.Register(() =>
+            {
+                GracefullyTerminateProcess();
+            });
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -80,6 +86,58 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
         finally
         {
             stopwatch.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Gracefully terminates the process using appropriate signals
+    /// </summary>
+    private void GracefullyTerminateProcess()
+    {
+        if (_process == null || _process.HasExited)
+            return;
+
+        try
+        {
+            logger.LogDebug("Attempting to gracefully terminate process {ProcessId}", _process.Id);
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (!_process.WaitForExit(3000))
+                {
+                    logger.LogWarning("Process {ProcessId} did not terminate gracefully, forcing kill", _process.Id);
+                    _process.Kill(true);
+                }
+            }
+            else
+            {
+                if (!_process.HasExited)
+                {
+                    Process.Start("kill", $"-TERM {_process.Id}");
+
+                    if (!_process.WaitForExit(3000))
+                    {
+                        logger.LogWarning("Process {ProcessId} did not terminate after SIGTERM, sending SIGKILL", _process.Id);
+                        Process.Start("kill", $"-KILL {_process.Id}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error gracefully terminating process {ProcessId}", _process.Id);
+
+            try
+            {
+                if (!_process.HasExited)
+                {
+                    _process.Kill(true);
+                }
+            }
+            catch (Exception killEx)
+            {
+                logger.LogError(killEx, "Failed to force kill process {ProcessId}", _process.Id);
+            }
         }
     }
 
@@ -202,7 +260,7 @@ public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
             {
                 if (!_process.HasExited)
                 {
-                    _process.Kill();
+                    GracefullyTerminateProcess();
                 }
                 _process.Dispose();
             }
