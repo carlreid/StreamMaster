@@ -5,8 +5,7 @@ public class SDSettingsRequest
 {
     public string? PreferredLogoStyle { get; set; }
     public string? AlternateLogoStyle { get; set; }
-    //public bool? SeriesPosterArt { get; set; }
-    //public bool? SeriesWsArt { get; set; }
+    public bool? SeriesPosterArt { get; set; }
     public string? SeriesPosterAspect { get; set; }
     public string? ArtworkSize { get; set; }
     public bool? ExcludeCastAndCrew { get; set; }
@@ -23,6 +22,7 @@ public class SDSettingsRequest
 
     [TsProperty(ForceNullable = true)]
     public List<HeadendToView>? HeadendsToView { get; set; }
+
     [TsProperty(ForceNullable = true)]
     public List<StationIdLineup>? SDStationIds { get; set; }
 
@@ -31,8 +31,10 @@ public class SDSettingsRequest
 
     public bool? SeriesImages { get; set; }
     public bool? XmltvAddFillerData { get; set; }
+
     //public string? XmltvFillerProgramDescription { get; set; }
     public int? XmltvFillerProgramLength { get; set; }
+
     public int? MaxSubscribedLineups { get; set; }
     public bool? XmltvIncludeChannelNumbers { get; set; }
     public bool? XmltvExtendedInfoInTitleDescriptions { get; set; }

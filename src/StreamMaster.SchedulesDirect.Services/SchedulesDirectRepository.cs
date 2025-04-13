@@ -326,7 +326,7 @@ public class SchedulesDirectRepository(
 
     public async Task<HttpResponseMessage?> GetSdImageAsync(string uri, CancellationToken cancellationToken)
     {
-        if (!sdSettings.CurrentValue.SDEnabled)
+        if (!sdSettings.CurrentValue.SDEnabled || !sdSettings.CurrentValue.SeriesPosterArt)
         {
             return null;
         }
