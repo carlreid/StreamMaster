@@ -4,14 +4,14 @@ using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
 using StreamMaster.Application.Common.Extensions;
 using StreamMaster.Application.StreamGroups.Queries;
+using StreamMaster.Domain.Enums;
 
 namespace StreamMaster.API.Controllers;
 
 [V1ApiController("s")]
-public class SsController(ISender Sender, IStreamGroupService streamGroupService) : Controller
+public class SsController(ISender Sender, IStreamGroupService streamGroupService, IFeatureFlagService featureFlagService) : Controller
 {
     [HttpGet]
     [AllowAnonymous]
@@ -20,6 +20,11 @@ public class SsController(ISender Sender, IStreamGroupService streamGroupService
     [Route("{streamGroupProfileId}/device.xml")]
     public async Task<IActionResult> GetStreamGroupCapability(int streamGroupProfileId)
     {
+        if (!featureFlagService.IsFeatureEnabled(FeatureFlags.ShortLinks))
+        {
+            return StatusCode(403, $"{nameof(FeatureFlags.ShortLinks)} are not enabled.");
+        }
+
         if (HttpContext.Request == null)
         {
             return NotFound();
@@ -39,6 +44,11 @@ public class SsController(ISender Sender, IStreamGroupService streamGroupService
     [Route("{streamGroupProfileId}/discover.json")]
     public async Task<IActionResult> GetStreamGroupDiscover(int streamGroupProfileId)
     {
+        if (!featureFlagService.IsFeatureEnabled(FeatureFlags.ShortLinks))
+        {
+            return StatusCode(403, $"{nameof(FeatureFlags.ShortLinks)} are not enabled.");
+        }
+
         if (HttpContext.Request == null)
         {
             return NotFound();
@@ -59,6 +69,11 @@ public class SsController(ISender Sender, IStreamGroupService streamGroupService
     [Route("{streamGroupProfileId}/lineup.json")]
     public async Task<IActionResult> GetStreamGroupLineup(int streamGroupProfileId)
     {
+        if (!featureFlagService.IsFeatureEnabled(FeatureFlags.ShortLinks))
+        {
+            return StatusCode(403, $"{nameof(FeatureFlags.ShortLinks)} are not enabled.");
+        }
+
         if (HttpContext.Request == null)
         {
             return NotFound();
@@ -91,13 +106,13 @@ public class SsController(ISender Sender, IStreamGroupService streamGroupService
     [HttpGet]
     [Route("{streamGroupProfileId}/epg.xml")]
     [Route("{streamGroupProfileId}.xml")]
-    //[Route("{streamGroupId}/{streamGroupProfileId}/epg.xml")]
     public async Task<IActionResult> GetStreamGroupEPG(int streamGroupProfileId)
     {
-        //if (!streamGroupId.HasValue)
-        //{
-        //    streamGroupId = await streamGroupService.GetStreamGroupIdFromstreamGroupProfileIdAsync(streamGroupProfileId).ConfigureAwait(false);
-        //}
+        if (!featureFlagService.IsFeatureEnabled(FeatureFlags.ShortLinks))
+        {
+            return StatusCode(403, $"{nameof(FeatureFlags.ShortLinks)} are not enabled.");
+        }
+
         string xml = await Sender.Send(new GetStreamGroupEPG(streamGroupProfileId)).ConfigureAwait(false);
         return new FileContentResult(Encoding.UTF8.GetBytes(xml), "application/xml")
         {
@@ -109,13 +124,13 @@ public class SsController(ISender Sender, IStreamGroupService streamGroupService
     [HttpGet]
     [Route("{streamGroupProfileId}/m3u.m3u")]
     [Route("{streamGroupProfileId}.m3u")]
-    //[Route("{streamGroupId}/{streamGroupProfileId}/m3u.m3u")]
     public async Task<IActionResult> GetStreamGroupM3U(int streamGroupProfileId)
     {
-        //if (!streamGroupId.HasValue)
-        //{
-        //    streamGroupId = await streamGroupService.GetStreamGroupIdFromstreamGroupProfileIdAsync(streamGroupProfileId).ConfigureAwait(false);
-        //}
+        if (!featureFlagService.IsFeatureEnabled(FeatureFlags.ShortLinks))
+        {
+            return StatusCode(403, $"{nameof(FeatureFlags.ShortLinks)} are not enabled.");
+        }
+
         string data = await Sender.Send(new GetStreamGroupM3U(streamGroupProfileId, true)).ConfigureAwait(false);
 
         return new FileContentResult(Encoding.UTF8.GetBytes(data), "application/x-mpegURL")

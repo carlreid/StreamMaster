@@ -6,6 +6,7 @@ public class BaseSettings
     {
         AuthenticationMethod = "None";
     }
+
     public bool DebugAPI { get; set; }
     public bool DeleteOldSTRMFiles { get; set; } = true;
     public string STRMBaseURL { get; set; } = "http://localhost:7095";
@@ -50,7 +51,12 @@ public class BaseSettings
     public bool VideoStreamAlwaysUseEPGLogo { get; set; } = true;
 }
 
-public class StreamSettings : BaseSettings
+public class SecuritySettings : BaseSettings
+{
+    public bool EnableShortLinks { get; set; } = true;
+}
+
+public class StreamSettings : SecuritySettings
 {
     public string DefaultCommandProfileName { get; set; } = "Default";
     public string DefaultOutputProfileName { get; set; } = "Default";

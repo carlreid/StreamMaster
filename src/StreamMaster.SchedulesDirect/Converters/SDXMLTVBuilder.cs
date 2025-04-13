@@ -40,10 +40,10 @@ public class SDXMLTVBuilder(
         return new XMLTV
         {
             Date = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture),
-            SourceInfoUrl = "https://github.com/SenexCrenshaw/StreamMaster",
+            SourceInfoUrl = "https://github.com/carlreid/StreamMaster",
             SourceInfoName = "Stream Master",
             GeneratorInfoName = "Stream Master",
-            GeneratorInfoUrl = "https://github.com/SenexCrenshaw/StreamMaster",
+            GeneratorInfoUrl = "https://github.com/carlreid/StreamMaster",
             Channels = [],
             Programs = []
         };

@@ -60,4 +60,6 @@ public class UpdateSettingParameters
 
     [TsProperty(ForceNullable = true)]
     public List<string>? NameRegex { get; set; } = [];
+
+    public bool? EnableShortLinks { get; set; }
 }

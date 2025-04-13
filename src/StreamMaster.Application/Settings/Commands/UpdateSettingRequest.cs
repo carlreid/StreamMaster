@@ -408,6 +408,11 @@ public partial class UpdateSettingRequestHandler(
             await backgroundTaskQueue.EPGSync().ConfigureAwait(false);
         }
 
+        if (request.Parameters.EnableShortLinks.HasValue)
+        {
+            currentSetting.EnableShortLinks = request.Parameters.EnableShortLinks.Value;
+        }
+
         return needsLogOut;
     }
 }

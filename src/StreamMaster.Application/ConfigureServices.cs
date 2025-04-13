@@ -6,10 +6,12 @@ using StreamMaster.Application.EPG;
 using StreamMaster.Application.EPG.Commands;
 using StreamMaster.Application.EPGFiles;
 using StreamMaster.Application.M3UFiles;
+using StreamMaster.Application.Services;
 using StreamMaster.Application.SMChannels;
 using StreamMaster.Application.SMStreams;
 using StreamMaster.Application.StreamGroups;
 using StreamMaster.Domain.Cache;
+
 namespace StreamMaster.Application;
 
 public static class ConfigureServices
@@ -26,6 +28,7 @@ public static class ConfigureServices
         services.AddTransient<ICryptoService, CryptoService>();
         services.AddTransient<IProfileService, ProfileService>();
         services.AddScoped<IStreamGroupService, StreamGroupService>();
+        services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IM3UFileService, M3UFileService>();
         services.AddScoped<IEPGService, EPGService>();
         services.AddScoped<IM3UToSMStreamsService, M3UToSMStreamsService>();
