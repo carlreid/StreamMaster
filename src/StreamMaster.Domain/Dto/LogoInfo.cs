@@ -36,9 +36,9 @@ public class LogoInfo
         Ext = IsSVG ? ".png" : string.IsNullOrEmpty(ext) ? ".png" : ext;
         Id = cleanedUrl.GenerateFNV1aHash(withExtension: false);
 
-        if (isSchedulesDirect && !url.StartsWithIgnoreCase("image/"))
+        if (isSchedulesDirect && !url.StartsWithIgnoreCase("https://json.schedulesdirect.org/20141201/image/"))
         {
-            url = "image/" + url;
+            url = $"https://json.schedulesdirect.org/20141201/image/{url}";
         }
 
         Url = url;
