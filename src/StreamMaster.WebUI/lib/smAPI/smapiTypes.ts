@@ -483,6 +483,7 @@ export interface SDSettings
 	SDUserName: string;
 	SeasonImages: boolean;
 	SeriesImages: boolean;
+	SeriesPosterArt: boolean;
 	SeriesPosterAspect: string;
 	SportsImages: boolean;
 	TokenErrorTimestamp: any;
@@ -514,6 +515,7 @@ export interface SDSettingsRequest
 	SDUserName?: string;
 	SeasonImages?: boolean;
 	SeriesImages?: boolean;
+	SeriesPosterArt?: boolean;
 	SeriesPosterAspect?: string;
 	SportsImages?: boolean;
 	XmltvAddFillerData?: boolean;
@@ -756,30 +758,6 @@ export interface MoveToNextStreamRequest
 {
 	SMChannelId: number;
 }
-export interface GetStreamGroupSMChannelsRequest
-{
-	StreamGroupId: number;
-}
-export interface AddSMChannelsToStreamGroupByParametersRequest
-{
-	Parameters: QueryStringParameters;
-	StreamGroupId: number;
-}
-export interface AddSMChannelsToStreamGroupRequest
-{
-	SMChannelIds: number[];
-	StreamGroupId: number;
-}
-export interface AddSMChannelToStreamGroupRequest
-{
-	SMChannelId: number;
-	StreamGroupId: number;
-}
-export interface RemoveSMChannelFromStreamGroupRequest
-{
-	SMChannelId: number;
-	StreamGroupId: number;
-}
 export interface SGFS
 {
 	Name: string;
@@ -843,6 +821,30 @@ export interface UpdateStreamGroupRequest
 	DeviceID?: string;
 	GroupKey?: string;
 	NewName?: string;
+	StreamGroupId: number;
+}
+export interface GetStreamGroupSMChannelsRequest
+{
+	StreamGroupId: number;
+}
+export interface AddSMChannelsToStreamGroupByParametersRequest
+{
+	Parameters: QueryStringParameters;
+	StreamGroupId: number;
+}
+export interface AddSMChannelsToStreamGroupRequest
+{
+	SMChannelIds: number[];
+	StreamGroupId: number;
+}
+export interface AddSMChannelToStreamGroupRequest
+{
+	SMChannelId: number;
+	StreamGroupId: number;
+}
+export interface RemoveSMChannelFromStreamGroupRequest
+{
+	SMChannelId: number;
 	StreamGroupId: number;
 }
 export interface GetChannelMetricsRequest
@@ -955,25 +957,6 @@ export interface SendSuccessRequest
 {
 	Detail: string;
 	Summary: string;
-}
-export interface GetSMChannelStreamsRequest
-{
-	SMChannelId: number;
-}
-export interface AddSMStreamToSMChannelRequest
-{
-	Rank?: number;
-	SMChannelId: number;
-	SMStreamId: string;
-}
-export interface RemoveSMStreamFromSMChannelRequest
-{
-	SMChannelId: number;
-	SMStreamId: string;
-}
-export interface SetSMStreamRanksRequest
-{
-	Requests: SMChannelStreamRankRequest[];
 }
 export interface GetPagedSMChannelsRequest
 {
@@ -1157,6 +1140,25 @@ export interface UpdateSMChannelRequest
 	StationId?: string;
 	TimeShift?: number;
 	VideoStreamHandler?: VideoStreamHandlers;
+}
+export interface GetSMChannelStreamsRequest
+{
+	SMChannelId: number;
+}
+export interface AddSMStreamToSMChannelRequest
+{
+	Rank?: number;
+	SMChannelId: number;
+	SMStreamId: string;
+}
+export interface RemoveSMStreamFromSMChannelRequest
+{
+	SMChannelId: number;
+	SMStreamId: string;
+}
+export interface SetSMStreamRanksRequest
+{
+	Requests: SMChannelStreamRankRequest[];
 }
 export interface GetSMChannelChannelsRequest
 {
@@ -1455,6 +1457,12 @@ export interface SetTestTaskRequest
 {
 	DelayInSeconds: number;
 }
+export interface GetEPGColorsRequest
+{
+}
+export interface EPGSyncRequest
+{
+}
 export interface GetEPGFileNamesRequest
 {
 }
@@ -1514,12 +1522,6 @@ export interface UpdateEPGFileRequest
 	Name?: string;
 	TimeShift?: number;
 	Url?: string;
-}
-export interface GetEPGColorsRequest
-{
-}
-export interface EPGSyncRequest
-{
 }
 export interface GetCustomPlayListRequest
 {
