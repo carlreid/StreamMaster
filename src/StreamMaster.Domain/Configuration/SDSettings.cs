@@ -26,6 +26,7 @@
         public List<HeadendToView> HeadendsToView { get; set; } = [];
         public string SDUserName { get; set; } = string.Empty;
         public string UserAgent { get; set; } = "StreamMaster/0.0.0.Sha.0000000000000000000000000000000000000000";
+        public bool SeriesPosterArt { get; set; } = false;
 
         public bool MovieImages { get; set; } = true;
         public bool SeasonImages { get; set; } = false;

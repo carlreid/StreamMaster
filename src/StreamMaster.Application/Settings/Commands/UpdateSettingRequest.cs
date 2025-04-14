@@ -48,10 +48,10 @@ public partial class UpdateSettingRequestHandler(
             destination.AlternateLogoStyle = source.AlternateLogoStyle;
         }
 
-        //if (source.SeriesPosterArt.HasValue)
-        //{
-        //    destination.SeriesPosterArt = source.SeriesPosterArt.Value;
-        //}
+        if (source.SeriesPosterArt.HasValue)
+        {
+            destination.SeriesPosterArt = source.SeriesPosterArt.Value;
+        }
 
         if (source.SeriesPosterAspect != null)
         {
