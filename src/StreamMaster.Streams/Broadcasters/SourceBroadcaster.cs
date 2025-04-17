@@ -30,8 +30,10 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
 
     /// <inheritdoc/>
     public StreamHandlerMetrics Metrics => StreamMetricsRecorder.Metrics;
+
     public bool IsMultiView { get; set; }
     public CancellationToken CancellationToken { get; } = cancellationToken;
+
     /// <inheritdoc/>
     public ConcurrentDictionary<string, IStreamDataToClients> ChannelBroadcasters { get; } = new();
 
@@ -72,6 +74,7 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
     {
         return ChannelBroadcasters.TryRemove(Id, out _);
     }
+
     public async Task<long> SetSourceMultiViewStreamAsync(IChannelBroadcaster channelBroadcaster, CancellationToken cancellationToken)
     {
         logger.LogInformation("Setting source stream {Name} to {StreamName}", Name, SMStreamInfo.Name);
@@ -106,11 +109,14 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
 
         this.SMStreamInfo = SMStreamInfo;
 
+        // Start a new streaming task
+        _cancellationTokenSource = new CancellationTokenSource();
+
         Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
             (Stream? stream, int processId, ProxyStreamError? error) =
-                await streamFactory.GetStream(SMStreamInfo, cancellationToken).ConfigureAwait(false);
+                await streamFactory.GetStream(SMStreamInfo, _cancellationTokenSource.Token).ConfigureAwait(false);
             stopwatch.Stop();
             if (stream == null || error != null)
             {
@@ -118,8 +124,6 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
                 return 0;
             }
 
-            // Start a new streaming task
-            _cancellationTokenSource = new CancellationTokenSource();
             _streamingTask = Task.Run(() => RunPipelineAsync(stream, SMStreamInfo.Name, cancellationToken: _cancellationTokenSource.Token), _cancellationTokenSource.Token);
             return stopwatch.ElapsedMilliseconds;
         }
@@ -193,6 +197,11 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
                     timeoutCts?.Dispose();
                 }
 
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
                 if (bytesRead == 0)
                 {
                     if (!hasReadData)
@@ -263,6 +272,7 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
     public async Task StopAsync()
     {
         await _stopLock.WaitAsync().ConfigureAwait(false);
+        Task? taskToAwait = null;
         try
         {
             if (Interlocked.CompareExchange(ref _isStopped, 1, 0) == 0)
@@ -271,11 +281,28 @@ public class SourceBroadcaster(ILogger<ISourceBroadcaster> logger, StreamConnect
                 {
                     _cancellationTokenSource?.Cancel();
                 }
+                taskToAwait = _streamingTask;
             }
         }
         finally
         {
             _stopLock.Release();
+        }
+
+        if (taskToAwait != null)
+        {
+            try
+            {
+                await taskToAwait.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogDebug("Task was already cancelled");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during SourceBroadcaster streaming task completion wait.");
+            }
         }
     }
 
