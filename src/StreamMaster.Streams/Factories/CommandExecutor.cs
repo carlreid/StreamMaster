@@ -1,412 +1,289 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.IO.Pipelines;
 using System.Text;
+using CliWrap;
+using CliWrap.Exceptions;
 
-namespace StreamMaster.Streams.Factories;
-
-/// <summary>
-/// Executes commands based on the provided profiles and manages process lifecycles.
-/// </summary>
-public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor, IDisposable
+namespace StreamMaster.Streams.Factories
 {
-    private bool _disposed;
-
-    /// <inheritdoc/>
-    public GetStreamResult ExecuteCommand(CommandProfileDto commandProfile, string streamUrl, string clientUserAgent, int? secondsIn, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Executes commands based on the provided profiles and manages process lifecycles using CliWrap.
+    /// Streams stdout and logs stderr.
+    /// </summary>
+    public class CommandExecutor(ILogger<CommandExecutor> logger) : ICommandExecutor
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        private readonly ILogger<CommandExecutor> _logger = logger;
+        private CancellationTokenSource? _processExitCts;
+        private CommandTask<CommandResult>? _commandTask;
+        private int _processId = -1;
+        private string? _stderrFilePath;
+        private bool _disposed;
 
-        Process? currentProcess = null;
-        StreamWriter? currentErrorWriter = null;
-        Stream? wrappedStream = null;
-
-        try
+        /// <inheritdoc/>
+        public GetStreamResult ExecuteCommand(CommandProfileDto commandProfile, string streamUrl, string clientUserAgent, int? secondsIn, CancellationToken cancellationToken = default)
         {
-            string? exec = FileUtil.GetExec(commandProfile.Command);
-            if (exec == null)
-            {
-                logger.LogCritical("Command \"{command}\" not found", commandProfile.Command);
-                return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.FileNotFound, Message = $"{commandProfile.Command} not found" });
-            }
-            string options = BuildCommand(commandProfile.Parameters, clientUserAgent, streamUrl, secondsIn);
+            Directory.CreateDirectory(BuildInfo.CommandErrorFolder);
 
-            currentProcess = new Process();
-            ConfigureProcess(currentProcess, exec, options);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            Pipe pipe = new();
 
-            using var registration = cancellationToken.Register(() =>
-            {
-                Process? processToCancel = currentProcess;
-                logger.LogDebug("Cancellation requested for Stream process {ProcessId}", processToCancel?.Id ?? -1);
-                if (processToCancel != null)
-                {
-                    GracefullyTerminateProcessInternal(processToCancel, logger);
-                }
-            });
-
-            cancellationToken.ThrowIfCancellationRequested(); // Check cancellation after registration
-
-            if (!currentProcess.Start())
-            {
-                currentProcess.Dispose();
-                currentProcess = null;
-                ProxyStreamError error = new() { ErrorCode = ProxyStreamErrorCode.ProcessStartFailed, Message = "Failed to start process" };
-                logger.LogError("Error: {ErrorMessage}", error.Message);
-                return new GetStreamResult(null, -1, error);
-            }
-
-            logger.LogInformation("Process {ProcessId} started successfully.", currentProcess.Id);
-
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                try
-                {
-                    Process.Start("setpgrp", $"{currentProcess.Id}");
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to set process group for {ProcessId}", currentProcess.Id);
-                }
-            }
-
-            string stderrFilePath = Path.Combine(BuildInfo.CommandErrorFolder, $"stderr_{currentProcess.Id}.log");
-            Directory.CreateDirectory(Path.GetDirectoryName(stderrFilePath)!);
-            currentErrorWriter = new StreamWriter(stderrFilePath, append: true, Encoding.UTF8);
-            CleanupOldLogs(BuildInfo.CommandErrorFolder, 10);
-
-            currentProcess.ErrorDataReceived += (sender, e) =>
-            {
-                StreamWriter? writer = currentErrorWriter;
-                if (writer != null && !string.IsNullOrWhiteSpace(e.Data))
-                {
-                    lock (writer)
-                    {
-                        try
-                        {
-                            writer.WriteLine(e.Data);
-                            writer.Flush();
-                        }
-                        catch (ObjectDisposedException) { /* Ignore if writer was disposed concurrently */ }
-                        catch (Exception ex) { logger.LogError(ex, "Error writing stderr for Process {ProcessId}", (sender as Process)?.Id ?? -1); }
-                    }
-                }
-            };
-            currentProcess.BeginErrorReadLine();
-            currentProcess.EnableRaisingEvents = true;
-
-            currentProcess.Exited += (sender, e) => Process_Exited(sender as Process, currentErrorWriter);
-
-            stopwatch.Stop();
-            logger.LogInformation("Opened command with args \"{options}\" for ProcessId {ProcessId} in {ElapsedMilliseconds} ms", commandProfile.Command + ' ' + commandProfile.Parameters, currentProcess.Id, stopwatch.ElapsedMilliseconds);
-
-            Action<Process> terminateDelegate = (processToTerminate) =>
-            {
-                GracefullyTerminateProcessInternal(processToTerminate, logger);
-            };
-
-            wrappedStream = new ProcessStreamWrapper(currentProcess.StandardOutput.BaseStream, currentProcess, terminateDelegate, logger);
-
-            var processId = currentProcess.Id;
-            var streamToReturn = wrappedStream;
-            currentProcess = null; // Ownership transferred to wrapper
-            currentErrorWriter = null; // Ownership (disposal) transferred to Exited event/wrapper
-
-            return new GetStreamResult(streamToReturn, processId, null);
-        }
-        catch (OperationCanceledException)
-        {
-            logger.LogInformation("ExecuteCommand cancelled for streamUrl: {StreamUrl}", streamUrl);
-            CleanupFailedExecution(currentProcess, currentErrorWriter);
-            return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.OperationCancelled, Message = "Operation was cancelled" });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error executing command for streamUrl {StreamUrl}: {ErrorMessage}", streamUrl, ex.Message);
-            CleanupFailedExecution(currentProcess, currentErrorWriter);
-            return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.UnknownError, Message = ex.Message });
-        }
-    }
-
-    private void CleanupFailedExecution(Process? process, StreamWriter? writer)
-    {
-        if (process != null)
-        {
-            logger.LogWarning("Cleaning up process {ProcessId} due to execution failure.", process.Id);
-            // Attempt termination before disposing
-            GracefullyTerminateProcessInternal(process, logger);
-            try { process.Dispose(); }
-            catch (Exception ex) { logger.LogError(ex, "Error disposing failed process {ProcessId}.", process.Id); }
-        }
-        if (writer != null)
-        {
-            try { writer.Dispose(); }
-            catch (Exception ex) { logger.LogError(ex, "Error disposing failed error writer."); }
-        }
-    }
-
-    private static void GracefullyTerminateProcessInternal(Process? processToTerminate, ILogger log)
-    {
-        if (processToTerminate == null)
-        {
-            log.LogDebug("GracefullyTerminateProcessInternal called with null process.");
-            return;
-        }
-
-        try
-        {
-            bool alreadyExited = false;
-            try
-            {
-                alreadyExited = processToTerminate.HasExited;
-            }
-            catch (InvalidOperationException)
-            {
-                log.LogWarning("Error checking HasExited for process {ProcessId} (may already be disposed or inaccessible). Assuming exited.", processToTerminate.Id);
-                alreadyExited = true;
-            }
-            catch (System.ComponentModel.Win32Exception ex)
-            {
-                log.LogWarning(ex, "Error checking HasExited for process {ProcessId}. Assuming exited.", processToTerminate.Id);
-                alreadyExited = true;
-            }
-
-            if (alreadyExited)
-            {
-                log.LogDebug("GracefullyTerminateProcessInternal: Process {ProcessId} already exited.", processToTerminate.Id);
-                return;
-            }
-
-            log.LogDebug("Attempting to gracefully terminate process {ProcessId}", processToTerminate.Id);
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                log.LogDebug("Waiting for process {ProcessId} to exit (Windows)...", processToTerminate.Id);
-                if (!processToTerminate.WaitForExit(3000))
-                {
-                    log.LogWarning("Process {ProcessId} did not terminate gracefully after wait, forcing kill", processToTerminate.Id);
-                    bool exitedBeforeKill = false;
-                    try { exitedBeforeKill = processToTerminate.HasExited; } catch { }
-                    if (!exitedBeforeKill)
-                    {
-                        processToTerminate.Kill(true);
-                    }
-                }
-                else
-                {
-                    log.LogDebug("Process {ProcessId} exited gracefully after wait (Windows).", processToTerminate.Id);
-                }
-            }
-            else
-            {
-                log.LogDebug("Sending SIGTERM to process {ProcessId}...", processToTerminate.Id);
-                Process.Start("kill", $"-TERM {processToTerminate.Id}");
-                if (!processToTerminate.WaitForExit(3000))
-                {
-                    log.LogWarning("Process {ProcessId} did not terminate after SIGTERM, sending SIGKILL", processToTerminate.Id);
-                    bool exitedBeforeKill = false;
-                    try { exitedBeforeKill = processToTerminate.HasExited; } catch { }
-                    if (!exitedBeforeKill)
-                    {
-                        log.LogDebug("Sending SIGKILL to process {ProcessId}...", processToTerminate.Id);
-                        Process.Start("kill", $"-KILL {processToTerminate.Id}");
-                        processToTerminate.WaitForExit(500);
-                    }
-                }
-                else
-                {
-                    log.LogDebug("Process {ProcessId} terminated after SIGTERM.", processToTerminate.Id);
-                }
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            log.LogWarning(ex, "Error terminating process {ProcessId}. It might have already exited.", processToTerminate.Id);
-        }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-            log.LogError(ex, "Win32Error during termination of process {ProcessId}", processToTerminate.Id);
-        }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "Error gracefully terminating process {ProcessId}", processToTerminate.Id);
-            try
-            {
-                bool exitedBeforeKill = false;
-                try { exitedBeforeKill = processToTerminate.HasExited; } catch { }
-                if (!exitedBeforeKill)
-                {
-                    log.LogWarning("Forcing kill on process {ProcessId} due to prior termination errors.", processToTerminate.Id);
-                    processToTerminate.Kill(true);
-                }
-            }
-            catch (Exception killEx)
-            {
-                log.LogError(killEx, "Failed to force kill process {ProcessId}", processToTerminate.Id);
-            }
-        }
-        finally
-        {
-            try
-            {
-                bool finalExitCheck = false;
-                try { finalExitCheck = processToTerminate.HasExited; } catch { }
-                if (!finalExitCheck)
-                {
-                    log.LogWarning("Process {ProcessId} termination logic completed, but HasExited is still false.", processToTerminate.Id);
-                }
-                else
-                {
-                    log.LogDebug("Process {ProcessId} confirmed exited after termination logic.", processToTerminate.Id);
-                }
-            }
-            catch { /* Ignore final state check errors */ }
-        }
-    }
-
-    private void Process_Exited(Process? process, StreamWriter? writer)
-    {
-        if (process == null)
-        {
-            logger.LogWarning("Process_Exited called with null process.");
-            return;
-        }
-
-        logger.LogDebug("Process {ProcessId} Exited event received.", process.Id);
-        try
-        {
-            if (!process.WaitForExit(1000))
-            {
-                logger.LogWarning("Process {ProcessId} Exited event received, but WaitForExit(1000) timed out.", process.Id);
-            }
+            _processExitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var internalToken = _processExitCts.Token;
 
             try
             {
-                if (process.StartInfo.RedirectStandardError)
+                string? execPath = FileUtil.GetExec(commandProfile.Command);
+                if (string.IsNullOrEmpty(execPath))
                 {
-                    process.CancelErrorRead();
+                    _logger.LogCritical("Command executable \"{Command}\" not found in PATH or specified location.", commandProfile.Command);
+                    return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.FileNotFound, Message = $"{commandProfile.Command} not found" });
                 }
-            }
-            catch (InvalidOperationException) { /* Ignore if already detached */ }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Error waiting for process {ProcessId} to fully exit in Exited event.", process.Id);
-        }
 
-        // Dispose the specific writer associated with this process exit
-        if (writer != null)
-        {
-            try
+                string arguments = BuildCommand(commandProfile.Parameters, clientUserAgent, streamUrl, secondsIn);
+
+                _stderrFilePath = Path.Combine(BuildInfo.CommandErrorFolder, $"stderr_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid().ToString("N")[..8]}.log");
+
+                _logger.LogInformation("Starting command: \"{Executable}\" with arguments: \"{Arguments}\". Logging stderr to: \"{StderrLogPath}\"",
+                    execPath, arguments, _stderrFilePath);
+
+                CleanupOldLogs(BuildInfo.CommandErrorFolder, 10);
+
+                Command command = Cli.Wrap(execPath)
+                    .WithArguments(arguments)
+                    .WithStandardOutputPipe(PipeTarget.ToStream(pipe.Writer.AsStream(), autoFlush: true))
+                    .WithStandardErrorPipe(PipeTarget.ToFile(_stderrFilePath))
+                    .WithValidation(CommandResultValidation.None);
+
+                _commandTask = command.ExecuteAsync(internalToken);
+
+                _processId = _commandTask.ProcessId;
+                _logger.LogInformation("Command (PID: {ProcessId}) started successfully in {ElapsedMilliseconds} ms. Arguments: {Arguments}",
+                    _processId, stopwatch.ElapsedMilliseconds, arguments);
+
+                _ = HandleCommandCompletionAsync(_commandTask, pipe.Writer, stopwatch, commandProfile, _processId, _stderrFilePath, internalToken);
+
+                return new GetStreamResult(pipe.Reader.AsStream(), _processId, null);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                logger.LogDebug("Disposing error writer for Process {ProcessId}.", process.Id);
-                writer.Dispose();
+                stopwatch.Stop();
+                _logger.LogWarning("Command start explicitly cancelled before process execution.");
+                pipe.Writer.Complete(new OperationCanceledException("Command start cancelled."));
+                return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.OperationCancelled, Message = "Operation was cancelled before start" });
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Error disposing error writer for Process {ProcessId}.", process.Id);
+                stopwatch.Stop();
+                _logger.LogError(ex, "Error starting command \"{Command}\": {ErrorMessage}", commandProfile.Command, ex.Message);
+                pipe.Writer.Complete(ex);
+                TryDeleteFile(_stderrFilePath);
+                return new GetStreamResult(null, -1, new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.UnknownError, Message = $"Failed to start command: {ex.Message}" });
             }
         }
 
-        // Dispose the specific process handle that exited
-        try
+        private async Task HandleCommandCompletionAsync(
+            CommandTask<CommandResult> commandTask,
+            PipeWriter pipeWriter,
+            Stopwatch stopwatch,
+            CommandProfileDto commandProfile,
+            int processId,
+            string? stderrFilePath,
+            CancellationToken cancellationToken)
         {
-            logger.LogDebug("Disposing process object {ProcessId}.", process.Id);
-            process.Dispose();
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Error disposing process object {ProcessId} in Exited event.", process.Id);
-        }
-    }
-
-    private static string BuildCommand(string command, string clientUserAgent, string streamUrl, int? secondsIn)
-    {
-        // (Implementation as before)
-        string s = secondsIn.HasValue ? $"-ss {secondsIn} " : "";
-        command = command.Replace("{clientUserAgent}", '"' + clientUserAgent + '"')
-                         .Replace("{streamUrl}", '"' + streamUrl + '"');
-        if (secondsIn.HasValue)
-        {
-            int index = command.IndexOf("-i ");
-            if (index >= 0)
+            ProxyStreamError? error = null;
+            Exception? completionException = null;
+            try
             {
-                command = command.Insert(index, s);
+                CommandResult result = await commandTask;
+                stopwatch.Stop();
+
+                if (result.ExitCode == 0)
+                {
+                    _logger.LogInformation(
+                        "Command {Command} (PID: {ProcessId}) completed successfully after {Duration}. Exit code: {ExitCode}",
+                        commandProfile.Command, processId, stopwatch.Elapsed, result.ExitCode);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                       "Command {Command} (PID: {ProcessId}) exited after {Duration} with non-zero exit code: {ExitCode}. Check stderr log: {StderrLogPath}",
+                       commandProfile.Command, processId, stopwatch.Elapsed, result.ExitCode, stderrFilePath);
+                    error = new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.IoError, Message = $"Process exited with code {result.ExitCode}" };
+                    completionException = new InvalidOperationException($"Process exited with code {result.ExitCode}. See log '{stderrFilePath}' for details.");
+                }
             }
-        }
-        return command;
-    }
-
-    private static void ConfigureProcess(Process process, string commandExec, string formattedArgs)
-    {
-        process.StartInfo.FileName = commandExec;
-        process.StartInfo.Arguments = formattedArgs;
-        process.StartInfo.CreateNoWindow = true;
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-        process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
-        process.StartInfo.StandardErrorEncoding = Encoding.UTF8;
-        process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            process.StartInfo.Environment["SM_PROCESS_TYPE"] = "STREAM";
-        }
-        process.EnableRaisingEvents = true;
-    }
-
-    private void CleanupOldLogs(string directoryPath, int maxLogsToKeep)
-    {
-        try
-        {
-            if (!Directory.Exists(directoryPath))
+            catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
             {
-                return;
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "Command {Command} (PID: {ProcessId}) was cancelled after {Duration}.",
+                    commandProfile.Command, processId, stopwatch.Elapsed);
+                error = new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.OperationCancelled, Message = "Command execution was cancelled." };
+                completionException = ex;
             }
-            List<FileInfo> logFiles = [.. new DirectoryInfo(directoryPath)
+            catch (CommandExecutionException ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "Command {Command} (PID: {ProcessId}) failed execution after {Duration}. Exit code: {ExitCode}. Check stderr log: {StderrLogPath}. Error: {ErrorMessage}",
+                    commandProfile.Command, processId, stopwatch.Elapsed, ex.ExitCode, stderrFilePath, ex.Message);
+                error = new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.IoError, Message = $"Command execution failed: {ex.Message}" };
+                completionException = ex;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "Command {Command} (PID: {ProcessId}) encountered an unexpected error after {Duration}. Check stderr log: {StderrLogPath}",
+                    commandProfile.Command, processId, stopwatch.Elapsed, stderrFilePath);
+                error = new ProxyStreamError { ErrorCode = ProxyStreamErrorCode.UnknownError, Message = $"Unexpected error: {ex.Message}" };
+                completionException = ex;
+            }
+            finally
+            {
+                await pipeWriter.CompleteAsync(completionException);
+                _logger.LogDebug("PipeWriter completed for PID {ProcessId}.", processId);
+            }
+        }
+
+        private void CleanupOldLogs(string directoryPath, int maxLogsToKeep)
+        {
+            try
+            {
+                if (!Directory.Exists(directoryPath) || maxLogsToKeep <= 0)
+                {
+                    return;
+                }
+
+                var logFiles = new DirectoryInfo(directoryPath)
                     .GetFiles("stderr_*.log")
-                    .OrderByDescending(f => f.CreationTime)];
-            if (logFiles.Count <= maxLogsToKeep)
+                    .OrderByDescending(f => f.LastWriteTime)
+                    .Skip(maxLogsToKeep)
+                    .ToList();
+
+                if (!logFiles.Any())
+                {
+                    return;
+                }
+
+                _logger.LogDebug("Cleaning up {Count} old log files from {Directory}...", logFiles.Count, directoryPath);
+                foreach (FileInfo file in logFiles)
+                {
+                    TryDeleteFile(file.FullName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during old log cleanup in directory: {Directory}", directoryPath);
+            }
+        }
+
+        private void TryDeleteFile(string? filePath)
+        {
+            if (string.IsNullOrEmpty(filePath)) return;
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    _logger.LogTrace("Deleted file: {FilePath}", filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete file: {FilePath}", filePath);
+            }
+        }
+
+        private static string BuildCommand(string command, string clientUserAgent, string streamUrl, int? secondsIn)
+        {
+            string s = secondsIn.HasValue ? $"-ss {secondsIn} " : "";
+            command = command.Replace("{clientUserAgent}", '"' + clientUserAgent + '"')
+                             .Replace("{streamUrl}", '"' + streamUrl + '"');
+            if (secondsIn.HasValue)
+            {
+                int index = command.IndexOf("-i ");
+                if (index >= 0)
+                {
+                    command = command.Insert(index, s);
+                }
+            }
+            return command;
+        }
+
+        /// <summary>
+        /// Disposes the command executor, attempts to cancel the running process, and cleans up resources.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
             {
                 return;
             }
-            foreach (FileInfo? file in logFiles.Skip(maxLogsToKeep))
+
+            if (disposing)
             {
-                try
+                _logger.LogDebug("Disposing CommandExecutor for PID {ProcessId}.", _processId);
+
+                if (_processExitCts != null && !_processExitCts.IsCancellationRequested)
                 {
-                    file.Delete();
+                    _logger.LogInformation("Requesting cancellation for command (PID: {ProcessId}) via Dispose.", _processId);
+                    try
+                    {
+                        _processExitCts.Cancel();
+                    }
+                    catch (ObjectDisposedException) { }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error cancelling CancellationTokenSource during Dispose for PID {ProcessId}.", _processId);
+                    }
                 }
-                catch (Exception ex)
+
+                _processExitCts?.Dispose();
+                _processExitCts = null;
+
+                if (_processId > 0)
                 {
-                    logger.LogWarning(ex, "Failed to delete old log file: {FileName}", file.FullName);
+                    try
+                    {
+                        Process? process = Process.GetProcessById(_processId);
+                        if (!process.HasExited)
+                        {
+                            _logger.LogWarning("Process (PID: {ProcessId}) still running after cancellation signal. Forcing kill.", _processId);
+                            process.Kill(entireProcessTree: true);
+                            _logger.LogInformation("Force killed process (PID: {ProcessId}).", _processId);
+                        }
+                        process.Dispose();
+                    }
+                    catch (ArgumentException)
+                    {
+                        _logger.LogDebug("Process (PID: {ProcessId}) not found or already exited during Dispose.", _processId);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        _logger.LogDebug("Process (PID: {ProcessId}) exited before force kill attempt.", _processId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error during final process cleanup for PID {ProcessId} in Dispose.", _processId);
+                    }
                 }
+
+                _logger.LogDebug("Finished disposing CommandExecutor for PID {ProcessId}.", _processId);
             }
+
+            _disposed = true;
         }
-        catch (Exception ex)
+
+        ~CommandExecutor()
         {
-            logger.LogError(ex, "Error cleaning up old logs in directory: {Directory}", directoryPath);
+            Dispose(false);
         }
-    }
-
-    /// <summary>
-    /// Disposes managed resources. Primarily for fallback; lifetime should be tied to the wrapped stream.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        if (disposing)
-        {
-            logger.LogDebug("CommandExecutor Dispose({Disposing}) called. This is a fallback.", disposing);
-        }
-
-        _disposed = true;
     }
 }

@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     
+    <PackageReference Include="CliWrap" Version="3.8.2" />
+    
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
     
     <PackageReference Include="Polly.Core" Version="8.5.2" />
