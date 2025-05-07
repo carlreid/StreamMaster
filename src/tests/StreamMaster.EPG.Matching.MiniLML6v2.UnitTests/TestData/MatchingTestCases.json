@@ -1,0 +1,128 @@
+[
+  {
+    "EPGId": "1#bbc",
+    "TVGName": "BBC One HD",
+    "Name": "BBC ONE",
+    "ExpectedChannel": "bbc-one"
+  },
+  {
+    "EPGId": "1#unknown",
+    "TVGName": "BBC Two",
+    "Name": "GB: BBC 2 SD",
+    "ExpectedChannel": "bbc-two"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "UK | BBC NEWS",
+    "Name": "BBC News Channel",
+    "ExpectedChannel": "bbc-one"
+  },
+  {
+    "EPGId": "1#itv",
+    "TVGName": "ITV1 HD",
+    "Name": "ITV 1",
+    "ExpectedChannel": "itv"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "GB: ITV2 +1",
+    "Name": "ITV 2",
+    "ExpectedChannel": "itv"
+  },
+  {
+    "EPGId": "1#channel4",
+    "TVGName": "Channel 4",
+    "Name": "UK: Channel 4 HD",
+    "ExpectedChannel": "channel4"
+  },
+  {
+    "EPGId": "1#channel5",
+    "TVGName": "Channel 5 HD",
+    "Name": "GB | 5",
+    "ExpectedChannel": "channel5"
+  },
+  {
+    "EPGId": "2#ard",
+    "TVGName": "Das Erste HD",
+    "Name": "DE | ARD",
+    "ExpectedChannel": "ard"
+  },
+  {
+    "EPGId": "2#zdf",
+    "TVGName": "ZDF",
+    "Name": "GER: ZDF HD",
+    "ExpectedChannel": "zdf"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "DE | ZDFneo FHD",
+    "Name": "ZDF Neo",
+    "ExpectedChannel": "zdf"
+  },
+  {
+    "EPGId": "3#tf1",
+    "TVGName": "TF1 HD",
+    "Name": "FR | TF1",
+    "ExpectedChannel": "tf1"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "FRA | TF1 Series Films",
+    "Name": "TF1 Series",
+    "ExpectedChannel": "tf1"
+  },
+  {
+    "EPGId": "3#france2",
+    "TVGName": "France 2",
+    "Name": "FR: France 2 HD",
+    "ExpectedChannel": "france2"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "Franceinfo",
+    "Name": "FRA | France Info TV",
+    "ExpectedChannel": "france2"
+  },
+  {
+    "EPGId": "1#cnn",
+    "TVGName": "CNN International",
+    "Name": "US: CNN",
+    "ExpectedChannel": "cnn"
+  },
+  {
+    "EPGId": "1#unknown",
+    "TVGName": "Cable News Network",
+    "Name": "NEWS | CNN",
+    "ExpectedChannel": "cnn"
+  },
+  {
+    "EPGId": "1#fox",
+    "TVGName": "FOX HD (East)",
+    "Name": "US: FOX",
+    "ExpectedChannel": "fox"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "Fox Broadcasting",
+    "Name": "USA | FOX SD",
+    "ExpectedChannel": "fox"
+  },
+  {
+    "EPGId": "invalid",
+    "TVGName": "DE Filmkanal",
+    "Name": "Movies DE",
+    "ExpectedChannel": null
+  },
+  {
+    "EPGId": "2#unknown",
+    "TVGName": "Zweites Deutsches Fernsehen",
+    "Name": "",
+    "ExpectedChannel": "zdf"
+  },
+  {
+    "EPGId": "1#unknown",
+    "TVGName": "Totally Unrelated Name",
+    "Name": "Something Random",
+    "ExpectedChannel": null
+  }
+]
