@@ -44,9 +44,11 @@ View available releases at our [container registry](https://github.com/carlreid/
 - **Smart Proxying**: RAM-based operations with fallback streams for reliability
 - **Resource Optimization**: Single backend stream efficiently serves multiple devices
 
-## Documentation 📚
+## Documentation and Community Support 📚
 
 Comprehensive guides and tutorials are available in our [official documentation](https://carlreid.github.io/StreamMaster/).
+
+For community support, [join our Discord server](https://discord.gg/TZE5Bwhg). For issues, bug reports, and feature requests, please continue to use GitHub for better tracking and transparency.
 
 ## Contributing 🤝
 
