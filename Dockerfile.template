@@ -2,8 +2,8 @@ LABEL org.opencontainers.image.url="https://hub.docker.com/r/carlreid/streammast
       org.opencontainers.image.source="https://github.com/carlreid/StreamMaster" \
       org.opencontainers.image.vendor="carlreid" \
       org.opencontainers.image.title="Stream Master" \
-      org.opencontainers.image.description="Dockerized Stream Master by SenexCrenshaw" \
-      org.opencontainers.image.authors="carlreid,SenexCrenshaw"
+      org.opencontainers.image.description="Dockerized Stream Master" \
+      org.opencontainers.image.authors="carlreid"
 
 WORKDIR /app
 

@@ -88,7 +88,7 @@ services:
 
 ### Configuration Explained 🔍
 
-- **Image**: Specifies the StreamMaster image to use. `senexcrenshaw/streammaster:latest`
+- **Image**: Specifies the StreamMaster image to use. `carlreid/streammaster:latest`
 - **Ports**:
   - `7095`: The default HTTP port for StreamMaster's web interface (default: `7095`).
     _Make sure port matches the `DEFAULT_PORT`._
