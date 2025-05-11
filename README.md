@@ -3,7 +3,7 @@
     <H1 align="center" width="100%">StreamMaster</H1>
 </p>
 
-> A comprehensive IPTV management platform for organizing and streaming public broadcast content through Plex DVR, Emby, and Jellyfin Live TV
+> A comprehensive IPTV management platform for organizing and streaming public broadcast content through Plex DVR, Emby, and Jellyfin Live TV 
 
 ## Quick Start 🚀
 
@@ -12,7 +12,7 @@
 > 
 > TV logos are also publicly available in the [tv-logos repository](https://github.com/tv-logo/tv-logos)
 
-Docker compose example:
+### Docker Compose Example:
 ```yaml
 services:
   streammaster:
@@ -46,19 +46,41 @@ View available releases at our [container registry](https://github.com/carlreid/
 
 ## Documentation 📚
 
-[Find our documentation here](https://carlreid.github.io/StreamMaster/)
+Comprehensive guides and tutorials are available in our [official documentation](https://carlreid.github.io/StreamMaster/).
 
 ## Contributing 🤝
 
-- **Issues**: Bug reports and feature requests ([create an issue](https://github.com/carlreid/StreamMaster/issues))
-- **Discussions**: Community feedback and ideas ([open a discussion](https://github.com/carlreid/StreamMaster/discussions))
-- **Development**: Pull requests welcome (read more about [how to contribute](https://github.com/carlreid/StreamMaster/blob/main/.github/CONTRIBUTING.md))
+We welcome contributions from the community in several ways:  
 
----
+- **Issues**: Bug reports can be made by ([creating an issue](https://github.com/carlreid/StreamMaster/issues))
+- **Discussions**: Share feedback and ideas in our ([discussion forum](https://github.com/carlreid/StreamMaster/discussions))
+- **Development**: Submit Pull Requests to help improve the project ([how to contribute](.github/CONTRIBUTING.md
+))
 
-*This repository is a fork of the original SenexCrenshaw/StreamMaster project, which was discontinued(?) in early 2025.*
+## License 📝
 
-*For historical reference, see the original [README](https://github.com/carlreid/StreamMaster/commit/c86c1deebc3bbde725ac64155e96a600fd9c1210).*
+StreamMaster is released [under the MIT License](LICENSE), which means:
+
+- ✅ You're free to use this software however you want
+- ✅ You can use it for personal or business projects at no cost
+- ✅ You can modify it to suit your needs
+- ✅ Just keep the original copyright notice included
+
+Like most open source software, StreamMaster comes with no guarantees - we've built it with care, but you use it at your own discretion.
+
+## Alternatives 🔄
+
+Like a box of chocolates, there are multiple flavours of self-hostable open source projects that can be considered alternatives to StreamMaster. Here are some of them, ordered by oldest project first:
+
+- [tvheadend](https://github.com/tvheadend/tvheadend): TV streaming server for Linux with multiple input sources
+- [Threadfin](https://github.com/Threadfin/Threadfin): M3U proxy for Kernel/Plex/Jellyfin/Emby based on [xTeVe](https://github.com/xteve-project/xTeVe)
+- [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr): IPTV stream and EPG data manager
+
+## Original Project 📝
+
+This repository is a fork of the original SenexCrenshaw/StreamMaster project, which was deleted in early 2025 for unknown reasons. The vast majority of the project was written and created by SenexCrenshaw, so all credit for the core functionality and design goes to SenexCrenshaw.
+
+This fork aims to preserve the project and ensure its continued availability to the community. We've focused on maintaining compatibility for existing users while making necessary updates for current technologies and addressing security concerns. The project welcomes community contributions as we move forward with modest, targeted improvements.
 
 ## Contributors ✨
 
