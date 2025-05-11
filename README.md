@@ -58,7 +58,7 @@ View available releases at our [container registry](https://github.com/carlreid/
 
 *This repository is a fork of the original SenexCrenshaw/StreamMaster project, which was discontinued(?) in early 2025.*
 
-*For historical reference, see the original [README](README_old.md).*
+*For historical reference, see the original [README](https://github.com/carlreid/StreamMaster/commit/c86c1deebc3bbde725ac64155e96a600fd9c1210).*
 
 ## Contributors ✨
 
