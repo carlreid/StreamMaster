@@ -1,4 +1,6 @@
-﻿namespace StreamMaster.Domain.Configuration
+﻿using System.Text.Json.Serialization;
+
+namespace StreamMaster.Domain.Configuration
 {
     [TsInterface(AutoI = false, IncludeNamespace = false, FlattenHierarchy = true, AutoExportMethods = false)]
     public class SDSettings
@@ -45,6 +47,10 @@
         public bool XmltvExtendedInfoInTitleDescriptions { get; set; } = false;
         public bool XmltvIncludeChannelNumbers { get; set; } = false;
         public bool XmltvSingleImage { get; set; } = false;
-        public DateTime SDTooManyRequestsSuspend { get; set; } = DateTime.MinValue;
+
+        /// <summary>
+        /// List of active error cooldowns
+        /// </summary>
+        public List<ErrorCooldownSetting> ErrorCooldowns { get; set; } = [];
     }
 }

@@ -1,21 +1,25 @@
-﻿using System.Net;
+﻿using StreamMaster.Domain.Configuration;
+using StreamMaster.Domain.Extensions;
+using StreamMaster.Domain.Helpers;
+using StreamMaster.Domain.Services;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-using StreamMaster.Domain.Configuration;
-using StreamMaster.Domain.Extensions;
-using StreamMaster.Domain.Helpers;
-using StreamMaster.Domain.Services;
-
 namespace StreamMaster.SchedulesDirect.Services;
 
+/// <summary>
+/// This HttpService is designed to work with the SchedulesDirect API.
+/// Documentation for the API can be found at: https://github.com/SchedulesDirect/JSON-Service/wiki/API-20141201
+/// </summary>
 public class HttpService : IHttpService, IDisposable
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<HttpService> _logger;
     private readonly IOptionsMonitor<SDSettings> _sdSettings;
     private readonly IDataRefreshService _dataRefreshService;
+    private readonly IApiErrorManager _apiErrorManager;
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
     private bool _disposed;
 
@@ -28,12 +32,14 @@ public class HttpService : IHttpService, IDisposable
         IHttpClientFactory httpClientFactory,
         ILogger<HttpService> logger,
         IOptionsMonitor<SDSettings> sdSettings,
-        IDataRefreshService dataRefreshService)
+        IDataRefreshService dataRefreshService,
+        IApiErrorManager apiErrorManager)
     {
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sdSettings = sdSettings ?? throw new ArgumentNullException(nameof(sdSettings));
         _dataRefreshService = dataRefreshService ?? throw new ArgumentNullException(nameof(dataRefreshService));
+        _apiErrorManager = apiErrorManager ?? throw new ArgumentNullException(nameof(apiErrorManager));
     }
 
     public async Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default)
@@ -46,6 +52,20 @@ public class HttpService : IHttpService, IDisposable
         if (!_sdSettings.CurrentValue.SDEnabled)
         {
             return default;
+        }
+
+        foreach (var code in SDHttpResponseCodeExtensions.GlobalCooldowns)
+        {
+            if (_apiErrorManager.IsInCooldown(code))
+            {
+                var cooldownInfo = _apiErrorManager.GetCooldownInfo(code);
+                _logger.LogWarning(
+                    "Request to {Endpoint} blocked due to active cooldown: {Reason}. Retry after {Time}",
+                    endpoint,
+                    cooldownInfo!.Reason,
+                    cooldownInfo.CooldownUntil.ToString("g"));
+                return default;
+            }
         }
 
         if (!await ValidateTokenAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
@@ -102,6 +122,28 @@ public class HttpService : IHttpService, IDisposable
             throw new ObjectDisposedException(nameof(HttpService));
         }
 
+        foreach (var code in SDHttpResponseCodeExtensions.GlobalCooldowns)
+        {
+            if (_apiErrorManager.IsInCooldown(code))
+            {
+                var cooldown = _sdSettings.CurrentValue.ErrorCooldowns
+                    .First(c => c.ErrorCode == (int)code);
+
+                _logger.LogWarning(
+                    "Request to {Uri} blocked due to active cooldown: {Reason}. Retry after {Time}",
+                    request.RequestUri,
+                    cooldown.Reason,
+                    cooldown.CooldownUntil.ToString("g"));
+
+                var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+                {
+                    ReasonPhrase = cooldown.Reason
+                };
+
+                return response;
+            }
+        }
+
         await ValidateTokenAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         try
@@ -143,7 +185,6 @@ public class HttpService : IHttpService, IDisposable
     private HttpResponseMessage HandleHttpResponseError(HttpResponseMessage response, string? content)
     {
         string? tokenUsed = null;
-
         if (response.RequestMessage?.Headers.Contains("token") == true)
         {
             tokenUsed = response.RequestMessage.Headers.GetValues("token")?.FirstOrDefault();
@@ -155,6 +196,7 @@ public class HttpService : IHttpService, IDisposable
             if (err != null)
             {
                 SDHttpResponseCode sdCode = (SDHttpResponseCode)err.Code;
+
                 if (sdCode == SDHttpResponseCode.TOKEN_INVALID)
                 {
                     _logger.LogError("SDToken is invalid {Token} {Length}",
@@ -169,7 +211,7 @@ public class HttpService : IHttpService, IDisposable
                         response.ReasonPhrase = "Service Unavailable";
                         break;
 
-                    case SDHttpResponseCode.ACCOUNT_DISABLED:
+                    case SDHttpResponseCode.JSON_ACCOUNT_ACCESS_DISABLED:
                     case SDHttpResponseCode.ACCOUNT_EXPIRED:
                     case SDHttpResponseCode.APPLICATION_DISABLED:
                         response.StatusCode = HttpStatusCode.Forbidden;
@@ -189,6 +231,17 @@ public class HttpService : IHttpService, IDisposable
 
                     case SDHttpResponseCode.MAX_IMAGE_DOWNLOADS:
                     case SDHttpResponseCode.MAX_IMAGE_DOWNLOADS_TRIAL:
+                        // Next day at UTC midnight
+                        _apiErrorManager.SetCooldown(sdCode, SMDT.UtcNow.Date.AddDays(1), "Image download limit reached");
+
+                        response.StatusCode = HttpStatusCode.TooManyRequests;
+                        response.ReasonPhrase = "Too Many Requests";
+                        break;
+
+                    case SDHttpResponseCode.MAX_IMAGE_INVALID_URI_ERRORS:
+                        // Resets ever 24 hours
+                        _apiErrorManager.SetCooldown(sdCode, SMDT.UtcNow.AddDays(1), "Application is requesting URIs which do not exist. ");
+
                         response.StatusCode = HttpStatusCode.TooManyRequests;
                         response.ReasonPhrase = "Too Many Requests";
                         break;
@@ -197,8 +250,8 @@ public class HttpService : IHttpService, IDisposable
                     case SDHttpResponseCode.TOKEN_INVALID:
                     case SDHttpResponseCode.INVALID_USER:
                     case SDHttpResponseCode.TOKEN_EXPIRED:
-                    case SDHttpResponseCode.TOKEN_DUPLICATED:
-                    case SDHttpResponseCode.UNKNOWN_USER:
+                    case SDHttpResponseCode.ACCOUNT_INACTIVE:
+                    case SDHttpResponseCode.UNKNOWN_CLIENT:
                         response.StatusCode = HttpStatusCode.Unauthorized;
                         response.ReasonPhrase = "Unauthorized";
                         ClearToken();
@@ -239,6 +292,22 @@ public class HttpService : IHttpService, IDisposable
         if (_disposed)
         {
             return false;
+        }
+
+        foreach (var code in SDHttpResponseCodeExtensions.LoginResponseCodes)
+        {
+            if (_apiErrorManager.IsInCooldown(code))
+            {
+                var cooldown = _sdSettings.CurrentValue.ErrorCooldowns
+                    .First(c => c.ErrorCode == (int)code);
+
+                _logger.LogWarning(
+                    "Token refresh blocked due to active cooldown: {Reason}. Retry after {Time}",
+                    cooldown.Reason,
+                    cooldown.CooldownUntil.ToString("g"));
+
+                return false;
+            }
         }
 
         try
@@ -304,7 +373,7 @@ public class HttpService : IHttpService, IDisposable
                 tokenResponse == null ||
                 tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_LOCKOUT ||
                 tokenResponse.Code == (int)SDHttpResponseCode.TOO_MANY_LOGINS ||
-                tokenResponse.Code == (int)SDHttpResponseCode.ACCOUNT_DISABLED
+                tokenResponse.Code == (int)SDHttpResponseCode.JSON_ACCOUNT_ACCESS_DISABLED
                     ? SMDT.UtcNow.AddHours(24.0)
                     : SMDT.UtcNow.AddMinutes(1.0);
 

@@ -466,6 +466,7 @@ export interface SDSettings
 	ArtworkSize: string;
 	EpisodeAppendProgramDescription: boolean;
 	EpisodeImages: boolean;
+	ErrorCooldowns: any[];
 	ExcludeCastAndCrew: boolean;
 	HeadendsToView: any[];
 	MaxSubscribedLineups: number;
@@ -480,7 +481,6 @@ export interface SDSettings
 	SDPassword: string;
 	SDPostalCode: string;
 	SDStationIds: StationIdLineup[];
-	SDTooManyRequestsSuspend: any;
 	SDUserName: string;
 	SeasonImages: boolean;
 	SeriesImages: boolean;

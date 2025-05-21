@@ -7,6 +7,7 @@ public enum SDHttpResponseCode
     DEFLATE_REQUIRED = 1002,
     USERAGENT_REQUIRED = 1003,
     TOKEN_MISSING = 1004,
+    UNKNOWN_CLIENT = 1005,
     TOKEN_INVALID = 1010,
     UNSUPPORTED_COMMAND = 2000,
     REQUIRED_ACTION_MISSING = 2001,
@@ -28,14 +29,15 @@ public enum SDHttpResponseCode
     INVALID_COUNTRY = 2108,
     STATIONID_NOT_FOUND = 2200,
     SERVICE_OFFLINE = 3000,
+    SERVER_BUSY = 3001,
     ACCOUNT_EXPIRED = 4001,
     INVALID_HASH = 4002,
     INVALID_USER = 4003,
     ACCOUNT_LOCKOUT = 4004,
-    ACCOUNT_DISABLED = 4005,
+    JSON_ACCOUNT_ACCESS_DISABLED = 4005,
     TOKEN_EXPIRED = 4006,
     APPLICATION_DISABLED = 4007,
-    TOKEN_DUPLICATED = 4008,
+    ACCOUNT_INACTIVE = 4008,
     TOO_MANY_LOGINS = 4009,
     MAX_LINEUP_CHANGES_REACHED = 4100,
     MAX_LINEUPS = 4101,
@@ -44,7 +46,7 @@ public enum SDHttpResponseCode
     IMAGE_QUEUED = 5001,
     MAX_IMAGE_DOWNLOADS = 5002,
     MAX_IMAGE_DOWNLOADS_TRIAL = 5003,
-    UNKNOWN_USER = 5004,
+    MAX_IMAGE_INVALID_URI_ERRORS = 5004,
     INVALID_PROGRAMID = 6000,
     PROGRAMID_QUEUED = 6001,
     SCHEDULE_NOT_FOUND = 7000,
@@ -52,11 +54,38 @@ public enum SDHttpResponseCode
     SCHEDULE_RANGE_EXCEEDED = 7020,
     SCHEDULE_NOT_IN_LINEUP = 7030,
     SCHEDULE_QUEUED = 7100,
-    UNKNOWN_ERROR = 9999
+    UNKNOWN_ERROR = 9999,
+
+    // Codes below are unmapped / are new
+
+    MAX_CHUNK_EXCEEDED_5000 = 1006,
+    EMPTY_REQUEST = 1007,
+    INCORRECT_REQUEST = 1008,
+    MAX_CHUNK_EXCEEDED_500 = 1009,
+    REQUIRED_PARAMETER_MISSING_PERSONID_OR_NAMEID = 2020,
+    INVALID_PARAMETER_UNKNOWN_REQUEST = 2054,
+    INVALID_PARAMETER_DEBUG = 2055,
+    STATIONID_DELETED = 2201,
+    INVALID_PERSONID = 2109
 }
 
 public static class SDHttpResponseCodeExtensions
 {
+    public static SDHttpResponseCode[] LoginResponseCodes = [
+        SDHttpResponseCode.ACCOUNT_LOCKOUT,
+        SDHttpResponseCode.TOO_MANY_LOGINS,
+        SDHttpResponseCode.JSON_ACCOUNT_ACCESS_DISABLED
+    ];
+
+    public static SDHttpResponseCode[] GlobalCooldowns = [
+        SDHttpResponseCode.SERVICE_OFFLINE,
+        SDHttpResponseCode.SERVER_BUSY,
+        SDHttpResponseCode.JSON_ACCOUNT_ACCESS_DISABLED,
+        SDHttpResponseCode.ACCOUNT_EXPIRED,
+        SDHttpResponseCode.ACCOUNT_LOCKOUT,
+        SDHttpResponseCode.APPLICATION_DISABLED,
+    ];
+
     public static string GetMessage(this SDHttpResponseCode responseCode)
     {
         return responseCode switch
@@ -90,7 +119,7 @@ public static class SDHttpResponseCodeExtensions
             SDHttpResponseCode.INVALID_HASH => "Password hash must be lowercase 40 character sha1_hex of password.",
             SDHttpResponseCode.INVALID_USER => "Invalid username or password.",
             SDHttpResponseCode.ACCOUNT_LOCKOUT => "Too many login failures. Locked for 15 minutes.",
-            SDHttpResponseCode.ACCOUNT_DISABLED => "Account has been disabled. Please contact Schedules Direct support: admin@schedulesdirect.org for more information.",
+            SDHttpResponseCode.JSON_ACCOUNT_ACCESS_DISABLED => "Account has been disabled. Please contact Schedules Direct support: admin@schedulesdirect.org for more information.",
             SDHttpResponseCode.TOKEN_EXPIRED => "Token has expired. Request new token.",
             SDHttpResponseCode.MAX_LINEUP_CHANGES_REACHED => "Exceeded maximum number of lineup changes for today.",
             SDHttpResponseCode.MAX_LINEUPS => "Exceeded number of lineups for this account.",

@@ -711,6 +711,7 @@ public class HttpServiceTests
         var mockDataRefreshService = new Mock<IDataRefreshService>();
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
 
         var appVersion = "1.2.3.Sha.BADC0FFEE0DDF00D000000000000000000000000";
         var sdSettings = new SDSettings
@@ -757,7 +758,8 @@ public class HttpServiceTests
             mockHttpClientFactory.Object,
             mockLogger.Object,
             mockSDSettings.Object,
-            mockDataRefreshService.Object);
+            mockDataRefreshService.Object,
+            mockApiErrorManager.Object);
 
         // Set token to avoid refresh
         SetTokenProperties(service);
@@ -770,13 +772,193 @@ public class HttpServiceTests
         capturedUserAgent.ShouldBe($"StreamMaster/{appVersion}");
     }
 
-    private (HttpService service, SDSettings settings, Mock<IHttpClientFactory> mockHttpClientFactory, Mock<HttpMessageHandler> mockHttpMessageHandler, Mock<IDataRefreshService> mockDataRefreshService) CreateServiceAndMocks()
+    [Fact]
+    public async Task SendRequestAsync_WhenGlobalCooldownActive_ReturnsDefault()
+    {
+        // Arrange
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
+
+        // Setup ApiErrorManager to report a global cooldown
+        var cooldownCode = SDHttpResponseCode.SERVICE_OFFLINE;
+        mockApiErrorManager
+            .Setup(m => m.IsInCooldown(cooldownCode))
+            .Returns(true);
+
+        mockApiErrorManager
+            .Setup(m => m.GetCooldownInfo(cooldownCode))
+            .Returns(new ErrorCooldownInfo(DateTime.UtcNow.AddHours(1), "Service is offline"));
+
+        var (service, _, mockHttpClientFactory, _, _) = CreateServiceAndMocks(mockApiErrorManager);
+
+        // Act
+        var result = await service.SendRequestAsync<object>(APIMethod.GET, "test-endpoint");
+
+        // Assert
+        result.ShouldBeNull();
+        mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Never);
+        mockApiErrorManager.Verify(m => m.IsInCooldown(cooldownCode), Times.Once);
+        mockApiErrorManager.Verify(m => m.GetCooldownInfo(cooldownCode), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendRawRequestAsync_WhenGlobalCooldownActive_ReturnsServiceUnavailable()
+    {
+        // Arrange
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
+        var (service, settings, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+
+        // Setup token properties to avoid token refresh
+        SetTokenProperties(service, "valid-token", true, DateTime.UtcNow);
+
+        // Configure the mock to handle ANY call to IsInCooldown
+        var cooldownCode = SDHttpResponseCode.SERVICE_OFFLINE;
+        mockApiErrorManager
+            .Setup(m => m.IsInCooldown(It.IsAny<SDHttpResponseCode>()))
+            .Returns(false); // Default to false
+
+        // Configure it to return true for SERVICE_OFFLINE specifically
+        mockApiErrorManager
+            .Setup(m => m.IsInCooldown(cooldownCode))
+            .Returns(true);
+
+        // Configure the error cooldowns collection
+        settings.ErrorCooldowns = new List<ErrorCooldownSetting>
+        {
+            new ErrorCooldownSetting
+            {
+                ErrorCode = (int)cooldownCode,
+                Reason = "Service is offline",
+                CooldownUntil = DateTime.UtcNow.AddHours(1)
+            }
+        };
+
+        // Make sure all HTTP calls return success
+        mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{}")
+            });
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "test-endpoint");
+
+        // Act
+        var response = await service.SendRawRequestAsync(request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        response.ReasonPhrase.ShouldBe("Service is offline");
+        mockApiErrorManager.Verify(m => m.IsInCooldown(cooldownCode), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task SendRequestAsync_WhenMaxImageDownloadsReached_SetsCooldown()
+    {
+        // Arrange
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
+        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+
+        SetTokenProperties(service);
+
+        SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.TooManyRequests, new
+        {
+            code = (int)SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+            message = "Too many image downloads"
+        });
+
+        // Act
+        var result = await service.SendRequestAsync<object>(APIMethod.GET, "test-endpoint");
+
+        // Assert
+        result.ShouldBeNull();
+        mockApiErrorManager.Verify(
+            m => m.SetCooldown(
+                SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+                It.Is<DateTime>(dt => dt > DateTime.UtcNow),
+                It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendRawRequestAsync_WhenMaxImageDownloadsReached_SetsCooldown()
+    {
+        // Arrange
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
+        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+
+        SetTokenProperties(service);
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "test-endpoint");
+
+        SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.TooManyRequests, new
+        {
+            code = (int)SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+            message = "Too many image downloads"
+        });
+
+        // Act
+        var response = await service.SendRawRequestAsync(request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        mockApiErrorManager.Verify(
+            m => m.SetCooldown(
+                SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+                It.Is<DateTime>(dt => dt > DateTime.UtcNow),
+                It.IsAny<string>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_WhenTooManyLoginsError_SetsCooldown()
+    {
+        // Arrange
+        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+
+        SetupTokenResponse(mockHttpMessageHandler, HttpStatusCode.Locked, new
+        {
+            code = (int)SDHttpResponseCode.TOO_MANY_LOGINS,
+            message = "Too many login attempts"
+        });
+
+        // Act
+        var result = await service.RefreshTokenAsync(CancellationToken.None);
+
+        // Assert
+        result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Constructor_WithNullApiErrorManager_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var mockLogger = new Mock<ILogger<HttpService>>();
+        var mockSDSettings = new Mock<IOptionsMonitor<SDSettings>>();
+        var mockDataRefreshService = new Mock<IDataRefreshService>();
+        var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+
+        // Act & Assert
+        Should.Throw<ArgumentNullException>(() => new HttpService(
+            mockHttpClientFactory.Object,
+            mockLogger.Object,
+            mockSDSettings.Object,
+            mockDataRefreshService.Object,
+            null!));
+    }
+
+    private (HttpService service, SDSettings settings, Mock<IHttpClientFactory> mockHttpClientFactory, Mock<HttpMessageHandler> mockHttpMessageHandler, Mock<IDataRefreshService> mockDataRefreshService)
+        CreateServiceAndMocks(Mock<IApiErrorManager> mockApiErrorManager = default!)
     {
         var mockLogger = new Mock<ILogger<HttpService>>();
         var mockSDSettings = new Mock<IOptionsMonitor<SDSettings>>();
         var mockDataRefreshService = new Mock<IDataRefreshService>();
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+        mockApiErrorManager ??= new Mock<IApiErrorManager>();
 
         var sdSettings = new SDSettings
         {
@@ -800,7 +982,8 @@ public class HttpServiceTests
             mockHttpClientFactory.Object,
             mockLogger.Object,
             mockSDSettings.Object,
-            mockDataRefreshService.Object);
+            mockDataRefreshService.Object,
+            mockApiErrorManager.Object);
 
         return (service, sdSettings, mockHttpClientFactory, mockHttpMessageHandler, mockDataRefreshService);
     }
@@ -811,9 +994,9 @@ public class HttpServiceTests
         var goodTokenProperty = typeof(HttpService).GetProperty("GoodToken");
         var tokenTimestampProperty = typeof(HttpService).GetProperty("TokenTimestamp");
 
-        if (tokenProperty != null) tokenProperty.SetValue(service, token);
-        if (goodTokenProperty != null) goodTokenProperty.SetValue(service, goodToken);
-        if (tokenTimestampProperty != null) tokenTimestampProperty.SetValue(service, timestamp ?? DateTime.UtcNow);
+        tokenProperty?.SetValue(service, token);
+        goodTokenProperty?.SetValue(service, goodToken);
+        tokenTimestampProperty?.SetValue(service, timestamp ?? DateTime.UtcNow);
     }
 
     private void SetupTokenResponse(Mock<HttpMessageHandler> mockHandler, HttpStatusCode statusCode, object responseContent)

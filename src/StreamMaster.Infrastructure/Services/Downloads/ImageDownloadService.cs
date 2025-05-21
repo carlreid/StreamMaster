@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
+using System.Linq;
 using System.Net;
 
 using Microsoft.Extensions.Hosting;
@@ -10,6 +11,7 @@ using StreamMaster.Domain.Dto;
 using StreamMaster.Domain.Enums;
 using StreamMaster.Domain.Extensions;
 using StreamMaster.Domain.Helpers;
+using StreamMaster.SchedulesDirect.Domain;
 using StreamMaster.SchedulesDirect.Domain.Interfaces;
 using StreamMaster.SchedulesDirect.Domain.JsonClasses;
 
@@ -28,13 +30,18 @@ namespace StreamMaster.Infrastructure.Services.Downloads
         private readonly SemaphoreSlim sdDownloadSemaphore;
         private readonly SemaphoreSlim downloadSemaphore;
         private readonly HttpClient httpClient; // Reused HttpClient via factory
-        private DateTime Last429Dt = DateTime.MinValue;
 
-        //private readonly object _lockObject = new();
         private static DateTime _lastRefreshTime = DateTime.MinValue;
 
         private static readonly Lock _refreshLock = new();
         private bool logged429 = false;
+
+        private static readonly SDHttpResponseCode[] ImageDownloadErrorCodes =
+        {
+            SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+            SDHttpResponseCode.MAX_IMAGE_DOWNLOADS_TRIAL,
+            SDHttpResponseCode.MAX_IMAGE_INVALID_URI_ERRORS
+        };
 
         public ImageDownloadServiceStatus ImageDownloadServiceStatus { get; } = new();
 
@@ -245,16 +252,23 @@ namespace StreamMaster.Infrastructure.Services.Downloads
 
         private bool CanProceedWithDownload()
         {
-            if (Last429Dt > DateTime.UtcNow)
+            // Check if any relevant error cooldowns are active
+            ErrorCooldownSetting? activeCooldown = sdSettings.CurrentValue.ErrorCooldowns
+                .Where(c => ImageDownloadErrorCodes.Contains((SDHttpResponseCode)c.ErrorCode) && c.CooldownUntil > DateTime.UtcNow)
+                .OrderByDescending(c => c.CooldownUntil)
+                .FirstOrDefault();
+
+            if (activeCooldown != null)
             {
                 if (!logged429)
                 {
-                    logger.LogWarning("Image downloads are temporarily suspended until {NoDownloadUntil}", sdSettings.CurrentValue.SDTooManyRequestsSuspend);
+                    logger.LogWarning("Image downloads are temporarily suspended until {CooldownUntil} due to {Reason}",
+                        activeCooldown.CooldownUntil, activeCooldown.Reason);
                     logged429 = true;
                 }
                 return false;
             }
-            Last429Dt = DateTime.MinValue;
+
             logged429 = false;
             return true;
         }
@@ -274,20 +288,36 @@ namespace StreamMaster.Infrastructure.Services.Downloads
             try
             {
                 HttpResponseMessage? response = logoInfo.IsSchedulesDirect
-    ? await GetSdImageAsync(logoInfo.Url, cancellationToken)
-    : await httpClient.GetAsync(logoInfo.Url, cancellationToken).ConfigureAwait(false);
+                    ? await GetSdImageAsync(logoInfo.Url, cancellationToken)
+                    : await httpClient.GetAsync(logoInfo.Url, cancellationToken).ConfigureAwait(false);
 
                 if (response != null)
                 {
                     if (response.StatusCode == HttpStatusCode.TooManyRequests)
                     {
-                        Last429Dt = DateTime.UtcNow
-                            .Date.AddDays(1)
-                            .AddMinutes(10);
-                        sdSettings.CurrentValue.SDTooManyRequestsSuspend = Last429Dt;
+                        DateTime cooldownUntil = DateTime.UtcNow.Date.AddDays(1);
+
+                        // Find and update existing entry or add a new one
+                        var existingCooldown = sdSettings.CurrentValue.ErrorCooldowns
+                            .FirstOrDefault(c => (SDHttpResponseCode)c.ErrorCode == SDHttpResponseCode.MAX_IMAGE_DOWNLOADS);
+
+                        if (existingCooldown != null)
+                        {
+                            existingCooldown.CooldownUntil = DateTime.UtcNow.Date.AddDays(1);
+                            existingCooldown.Reason = "Too many image download requests";
+                        }
+                        else
+                        {
+                            sdSettings.CurrentValue.ErrorCooldowns.Add(new ErrorCooldownSetting
+                            {
+                                ErrorCode = (int)SDHttpResponseCode.MAX_IMAGE_DOWNLOADS,
+                                CooldownUntil = cooldownUntil,
+                                Reason = "Too many image download requests"
+                            });
+                        }
 
                         SettingsHelper.UpdateSetting(sdSettings.CurrentValue);
-                        logger.LogWarning("Max image download limit reached. No more downloads allowed until {NoDownloadUntil}", sdSettings.CurrentValue.SDTooManyRequestsSuspend);
+                        logger.LogWarning("Max image download limit reached. No more downloads allowed until {CooldownUntil}", cooldownUntil);
                         return false;
                     }
 
