@@ -69,6 +69,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Grosner300",
+      "name": "Gary",
+      "avatar_url": "https://avatars.githubusercontent.com/u/24656399?v=4",
+      "profile": "https://github.com/Grosner300",
+      "contributions": [
+        "userTesting"
+      ]
     }
   ],
   "contributorsPerLine": 7,

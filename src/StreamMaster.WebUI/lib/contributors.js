@@ -1,11 +1,11 @@
 // This file is auto-generated. Do not edit manually.
 // To update this, run "npm run give-credit" in the WebUI project.
-// Last updated: 2025-03-30T10:44:29.700Z
+// Last updated: 2025-05-22T15:38:44.121Z
 
 export const contributors = [
   {
-    "html_url": "https://www.carlreid.dk",
-    "login": "www.carlreid.dk",
+    "html_url": "https://github.com/carlreid",
+    "login": "carlreid",
     "avatar_url": "https://avatars.githubusercontent.com/u/33623601?v=4",
     "name": "Carl Reid"
   },
@@ -22,18 +22,6 @@ export const contributors = [
     "name": "Fil"
   },
   {
-    "html_url": "https://github.com/jackydec",
-    "login": "jackydec",
-    "avatar_url": "https://avatars.githubusercontent.com/u/25207298?v=4",
-    "name": "jackydec"
-  },
-  {
-    "html_url": "https://github.com/jbf154",
-    "login": "jbf154",
-    "avatar_url": "https://avatars.githubusercontent.com/u/16122392?v=4",
-    "name": "jbf154"
-  },
-  {
     "html_url": "https://github.com/tam1m",
     "login": "tam1m",
     "avatar_url": "https://avatars.githubusercontent.com/u/472185?v=4",
@@ -44,5 +32,23 @@ export const contributors = [
     "login": "Austin1",
     "avatar_url": "https://avatars.githubusercontent.com/u/341408?v=4",
     "name": "Austin1"
+  },
+  {
+    "html_url": "https://github.com/jbf154",
+    "login": "jbf154",
+    "avatar_url": "https://avatars.githubusercontent.com/u/16122392?v=4",
+    "name": "jbf154"
+  },
+  {
+    "html_url": "https://github.com/jackydec",
+    "login": "jackydec",
+    "avatar_url": "https://avatars.githubusercontent.com/u/25207298?v=4",
+    "name": "jackydec"
+  },
+  {
+    "html_url": "https://github.com/Grosner300",
+    "login": "Grosner300",
+    "avatar_url": "https://avatars.githubusercontent.com/u/24656399?v=4",
+    "name": "Gary"
   }
 ];
