@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 
 using StreamMaster.Application.Interfaces;
 using StreamMaster.Domain.Configuration;
-using StreamMaster.EPG;
+using StreamMaster.Domain.EPG;
 using StreamMaster.Infrastructure.EF.PGSQL;
 using StreamMaster.Infrastructure.EF.Repositories;
 using StreamMaster.SchedulesDirect.Domain.Interfaces;

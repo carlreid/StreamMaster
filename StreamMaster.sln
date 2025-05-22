@@ -44,7 +44,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BuildClientAPI", "src\Build
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StreamMaster.PlayList", "src\StreamMaster.PlayList\StreamMaster.PlayList.csproj", "{ACC8203B-0256-4218-B089-C1145C4E959C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.EPG", "src\StreamMaster.EPG\StreamMaster.EPG.csproj", "{2E22C6A6-5B92-3910-00B2-3D7410403136}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.EPG.Matching.Fuzzy", "src\StreamMaster.EPG\StreamMaster.EPG.Matching.Fuzzy.csproj", "{2E22C6A6-5B92-3910-00B2-3D7410403136}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.Infrastructure.EF.PGSQL.Console", "src\StreamMaster.Infrastructure.EF.PGSQL.Console\StreamMaster.Infrastructure.EF.PGSQL.Console.csproj", "{ADD8EDF8-775B-468C-3BAB-2F0C4EDB1BEC}"
 EndProject
@@ -57,6 +57,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.Application.UnitTests", "src\tests\StreamMaster.Application.UnitTests\StreamMaster.Application.UnitTests.csproj", "{9DD8BABB-CDEC-9C8F-B1A4-631FA6670CE7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.SchedulesDirect.Services.UnitTests", "src\tests\StreamMaster.SchedulesDirect.Services.UnitTests\StreamMaster.SchedulesDirect.Services.UnitTests.csproj", "{F628CC15-8508-BFB5-5849-5A29FB07FC47}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.EPG.Matching.MiniLML6v2", "src\StreamMaster.EPG.Matching.MiniLML6v2\StreamMaster.EPG.Matching.MiniLML6v2.csproj", "{2948776F-73DB-4995-A20E-2DFD6BF2F507}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamMaster.EPG.Matching.MiniLML6v2.UnitTests", "src\tests\StreamMaster.EPG.Matching.MiniLML6v2.UnitTests\StreamMaster.EPG.Matching.MiniLML6v2.UnitTests.csproj", "{DFE0EEBA-19CB-41BA-B087-8A539595B22A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -234,6 +238,22 @@ Global
 		{F628CC15-8508-BFB5-5849-5A29FB07FC47}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F628CC15-8508-BFB5-5849-5A29FB07FC47}.Release|ARM64.ActiveCfg = Release|Any CPU
 		{F628CC15-8508-BFB5-5849-5A29FB07FC47}.Release|ARM64.Build.0 = Release|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507}.Release|ARM64.Build.0 = Release|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A}.Release|ARM64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -260,6 +280,8 @@ Global
 		{51976BE7-621E-AF33-AEEA-99EB90ECBB6F} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{9DD8BABB-CDEC-9C8F-B1A4-631FA6670CE7} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{F628CC15-8508-BFB5-5849-5A29FB07FC47} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{2948776F-73DB-4995-A20E-2DFD6BF2F507} = {A110113B-BD6D-4B5D-B0DB-DD6431463476}
+		{DFE0EEBA-19CB-41BA-B087-8A539595B22A} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A052E296-D42D-4EB4-8967-70DF432D997D}
