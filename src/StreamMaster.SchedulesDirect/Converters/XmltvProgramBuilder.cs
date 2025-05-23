@@ -40,7 +40,7 @@ namespace StreamMaster.SchedulesDirect.Converters
                 Descriptions = ConvertToXmltvTextList(GetFullDescription(mxfProgram, scheduleEntry, sdSettings)),
                 Credits = BuildProgramCredits(mxfProgram),
                 Date = BuildProgramDate(mxfProgram),
-                //Categories = BuildProgramCategories(mxfProgram),
+                Categories = ConvertToXmltvTextList(mxfProgram.Category),
                 Language = ConvertToXmltvText(mxfProgram.Language),
                 Icons = BuildProgramIcons(scheduleEntry, baseUrl),
                 EpisodeNums = BuildEpisodeNumbers(scheduleEntry),

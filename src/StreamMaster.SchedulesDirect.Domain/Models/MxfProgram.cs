@@ -311,6 +311,14 @@ public class MxfProgram : BaseArt
     public bool IsProgramEpisodic { get; set; }
 
     /// <summary>
+    /// Category of the program.
+    /// This value is used in the Guide's grid view categories.
+    /// </summary>
+    [XmlAttribute("category")]
+    [DefaultValue("")]
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indicates whether the program is a movie.
     /// This value determines whether the program appears in the Movies category of the Guide grid and in other movie-related locations.
     /// </summary>

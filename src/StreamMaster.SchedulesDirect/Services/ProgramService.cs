@@ -205,7 +205,10 @@ public class ProgramService(
         DetermineContentAdvisory(mxfProgram, sdProgram);
         DetermineCastAndCrew(mxfProgram, sdProgram);
 
+
         // Additional program data like genres and teams (for sports)
+        mxfProgram.Category = sdProgram.EntityType;
+
         if (sdProgram.Genres?.Length > 0)
         {
             //mxfProgram.Extras.AddOrUpdate("genres", new List<string>(sdProgram.Genres));
