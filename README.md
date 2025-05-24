@@ -103,6 +103,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Grosner300"><img src="https://avatars.githubusercontent.com/u/24656399?v=4?s=100" width="100px;" alt="Gary"/><br /><sub><b>Gary</b></sub></a><br /><a href="#userTesting-Grosner300" title="User Testing">📓</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://danielenman.com/"><img src="https://avatars.githubusercontent.com/u/432487?v=4?s=100" width="100px;" alt="Dan Enman"/><br /><sub><b>Dan Enman</b></sub></a><br /><a href="https://github.com/carlreid/StreamMaster/commits?author=enmand" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

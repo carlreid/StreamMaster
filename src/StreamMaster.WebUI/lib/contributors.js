@@ -1,6 +1,6 @@
 // This file is auto-generated. Do not edit manually.
 // To update this, run "npm run give-credit" in the WebUI project.
-// Last updated: 2025-05-22T15:38:44.121Z
+// Last updated: 2025-05-24T07:13:05.487Z
 
 export const contributors = [
   {
@@ -50,5 +50,11 @@ export const contributors = [
     "login": "Grosner300",
     "avatar_url": "https://avatars.githubusercontent.com/u/24656399?v=4",
     "name": "Gary"
+  },
+  {
+    "html_url": "https://danielenman.com/",
+    "login": "",
+    "avatar_url": "https://avatars.githubusercontent.com/u/432487?v=4",
+    "name": "Dan Enman"
   }
 ];
