@@ -15,6 +15,7 @@ using StreamMaster.Application.Hubs;
 using StreamMaster.Application.Statistics.Commands;
 using StreamMaster.Domain.Helpers;
 using StreamMaster.EPG;
+using StreamMaster.EPG.Matching.MiniLML6v2;
 using StreamMaster.Infrastructure;
 using StreamMaster.Infrastructure.EF;
 using StreamMaster.Infrastructure.EF.PGSQL;
@@ -177,7 +178,8 @@ if (!string.IsNullOrEmpty(sslCertPath))
 }
 
 // GetOrAdd services to the container.
-builder.Services.AddEPGServices();
+//builder.Services.AddFuzzyEPGMatcherServices();
+builder.Services.AddMiniLML6v2EPGMatcherServices();
 builder.Services.AddSchedulesDirectAPIServices();
 builder.Services.AddSchedulesDirectServices();
 builder.Services.AddApplicationServices();

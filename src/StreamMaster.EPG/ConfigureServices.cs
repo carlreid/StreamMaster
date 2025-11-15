@@ -1,12 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
+using StreamMaster.Domain.EPG;
 
 namespace StreamMaster.EPG;
 
 public static class ConfigureServices
 {
-    public static IServiceCollection AddEPGServices(this IServiceCollection services)
+    public static IServiceCollection AddFuzzyEPGMatcherServices(this IServiceCollection services)
     {
-        services.AddScoped<IEpgMatcher, EpgMatcher>();
+        services.AddScoped<IEpgMatcher, FuzzyEpgMatcher>();
         return services;
     }
 }
