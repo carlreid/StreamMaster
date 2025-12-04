@@ -9,6 +9,7 @@ using StreamMaster.SchedulesDirect.Domain;
 using StreamMaster.SchedulesDirect.Domain.Enums;
 using StreamMaster.SchedulesDirect.Services;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace StreamMaster.SchedulesDirect.UnitTests.Services;
@@ -19,8 +20,8 @@ public class HttpServiceTests
     public void IsReady_WhenTokenErrorTimestampInPast_ReturnsTrue()
     {
         // Arrange
-        var (service, settings, _, _, _) = CreateServiceAndMocks();
-        settings.TokenErrorTimestamp = DateTime.UtcNow.AddMinutes(-5);
+        var (service, settings, _, _, _, _) = CreateServiceAndMocks();
+        settings.ErrorCooldowns = new List<ErrorCooldownSetting>();
 
         // Act
         bool result = service.IsReady;
@@ -33,8 +34,16 @@ public class HttpServiceTests
     public void IsReady_WhenTokenErrorTimestampInFuture_ReturnsFalse()
     {
         // Arrange
-        var (service, settings, _, _, _) = CreateServiceAndMocks();
-        settings.TokenErrorTimestamp = DateTime.UtcNow.AddMinutes(5);
+        var (service, settings, _, _, _, _) = CreateServiceAndMocks();
+        settings.ErrorCooldowns = new List<ErrorCooldownSetting>
+        {
+            new ErrorCooldownSetting
+            {
+                ErrorCode = (int)SDHttpResponseCode.SERVICE_OFFLINE,
+                CooldownUntil = DateTime.UtcNow.AddMinutes(5),
+                Reason = "Test cooldown"
+            }
+        };
 
         // Act
         bool result = service.IsReady;
@@ -47,14 +56,14 @@ public class HttpServiceTests
     public void ClearToken_ResetsTokenState()
     {
         // Arrange
-        var (service, _, _, _, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, _, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         // Act
         service.ClearToken();
 
         // Assert
-        service.Token.ShouldBeNull();
+        mockTokenStore.Verify(x => x.ClearToken(), Times.Once);
         service.GoodToken.ShouldBeFalse();
         service.TokenTimestamp.ShouldBe(DateTime.MinValue);
     }
@@ -63,7 +72,7 @@ public class HttpServiceTests
     public async Task ValidateTokenAsync_WhenSDDisabled_ReturnsFalse()
     {
         // Arrange
-        var (service, settings, _, _, _) = CreateServiceAndMocks();
+        var (service, settings, _, _, _, _) = CreateServiceAndMocks();
         settings.SDEnabled = false;
 
         // Act
@@ -77,7 +86,7 @@ public class HttpServiceTests
     public async Task ValidateTokenAsync_WithForceReset_RefreshesToken()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
 
         // Setup token response
         SetupTokenResponse(mockHttpMessageHandler, HttpStatusCode.OK, new
@@ -92,14 +101,14 @@ public class HttpServiceTests
 
         // Assert
         result.ShouldBeTrue();
-        service.Token.ShouldBe("new-token");
+        mockTokenStore.Verify(x => x.SetToken("new-token"), Times.Once);
     }
 
     [Fact]
     public async Task RefreshTokenAsync_SuccessfulTokenRefresh_UpdatesTokenAndReturnsTrue()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, mockDataRefreshService) = CreateServiceAndMocks();
+        var (service, _, _, mockHttpMessageHandler, mockDataRefreshService, mockTokenStore) = CreateServiceAndMocks();
         var tokenDateTime = DateTime.UtcNow;
 
         SetupTokenResponse(mockHttpMessageHandler, HttpStatusCode.OK, new
@@ -114,7 +123,7 @@ public class HttpServiceTests
 
         // Assert
         result.ShouldBeTrue();
-        service.Token.ShouldBe("new-token");
+        mockTokenStore.Verify(x => x.SetToken("new-token"), Times.Once);
         service.GoodToken.ShouldBeTrue();
         Math.Abs((service.TokenTimestamp - tokenDateTime).TotalSeconds).ShouldBeLessThan(1);
         mockDataRefreshService.Verify(x => x.RefreshSDReady(), Times.AtLeastOnce);
@@ -124,7 +133,7 @@ public class HttpServiceTests
     public async Task RefreshTokenAsync_MissingCredentials_ReturnsFalse()
     {
         // Arrange
-        var (service, settings, mockHttpClientFactory, _, _) = CreateServiceAndMocks();
+        var (service, settings, mockHttpClientFactory, _, _, _) = CreateServiceAndMocks();
         settings.SDUserName = "";
         settings.SDPassword = "";
 
@@ -140,8 +149,23 @@ public class HttpServiceTests
     public async Task RefreshTokenAsync_NotReady_ReturnsFalse()
     {
         // Arrange
-        var (service, settings, mockHttpClientFactory, _, _) = CreateServiceAndMocks();
-        settings.TokenErrorTimestamp = DateTime.UtcNow.AddHours(1); // Future timestamp means not ready
+        var (service, settings, mockHttpClientFactory, mockHttpMessageHandler, _, _) = CreateServiceAndMocks();
+        settings.ErrorCooldowns = new List<ErrorCooldownSetting>
+        {
+            new ErrorCooldownSetting
+            {
+                ErrorCode = (int)SDHttpResponseCode.SERVICE_OFFLINE,
+                CooldownUntil = DateTime.UtcNow.AddHours(1),
+                Reason = "Test cooldown"
+            }
+        };
+
+        mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
 
         // Act
         bool result = await service.RefreshTokenAsync(CancellationToken.None);
@@ -156,7 +180,7 @@ public class HttpServiceTests
     public async Task RefreshTokenAsync_WhenServerReturnsError_HandlesProperly()
     {
         // Arrange
-        var (service, settings, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, settings, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
         var initialTimestamp = settings.TokenErrorTimestamp;
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.Unauthorized, new
@@ -170,7 +194,7 @@ public class HttpServiceTests
 
         // Assert
         result.ShouldBeFalse();
-        service.Token.ShouldBeNull();
+        mockTokenStore.Verify(x => x.ClearToken(), Times.AtLeastOnce);
         service.GoodToken.ShouldBeFalse();
         settings.TokenErrorTimestamp.ShouldBeGreaterThan(initialTimestamp);
     }
@@ -179,7 +203,7 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WhenSDDisabled_ReturnsDefault()
     {
         // Arrange
-        var (service, settings, mockHttpClientFactory, _, _) = CreateServiceAndMocks();
+        var (service, settings, mockHttpClientFactory, _, _, _) = CreateServiceAndMocks();
         settings.SDEnabled = false;
 
         // Act
@@ -194,7 +218,7 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WhenTokenInvalid_ThrowsException()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, _, _, mockHttpMessageHandler, _, _) = CreateServiceAndMocks();
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.Unauthorized, new
         {
@@ -211,8 +235,8 @@ public class HttpServiceTests
     public async Task SendRawRequestAsync_WhenTokenValid_SendsRequest()
     {
         // Arrange
-        var (service, _, mockHttpClientFactory, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, mockHttpClientFactory, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var request = new HttpRequestMessage(HttpMethod.Get, "test");
 
@@ -239,8 +263,8 @@ public class HttpServiceTests
     public async Task SendRawRequestAsync_WhenHttpRequestExceptionOccurs_LogsAndRethrows()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var request = new HttpRequestMessage(HttpMethod.Get, "test");
 
@@ -260,8 +284,8 @@ public class HttpServiceTests
     public async Task SendRawRequestAsync_WhenErrorResponse_HandlesErrorCorrectly()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var request = new HttpRequestMessage(HttpMethod.Get, "test");
 
@@ -283,7 +307,7 @@ public class HttpServiceTests
     public async Task HandleHttpResponseError_AccountLockout_UpdatesTokenErrorTimestamp()
     {
         // Arrange
-        var (service, settings, _, mockHttpMessageHandler, mockDataRefreshService) = CreateServiceAndMocks();
+        var (service, settings, _, mockHttpMessageHandler, mockDataRefreshService, _) = CreateServiceAndMocks();
         var initialTimestamp = settings.TokenErrorTimestamp;
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.Unauthorized, new
@@ -304,23 +328,51 @@ public class HttpServiceTests
     public async Task ConcurrentTokenRefresh_HandlesRaceConditionCorrectly()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, _, mockHttpClientFactory, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
 
-        SetupTokenResponse(mockHttpMessageHandler, HttpStatusCode.OK, new
+        var httpClient = new HttpClient(mockHttpMessageHandler.Object)
         {
-            code = 0,
-            token = "new-token",
-            datetime = DateTime.UtcNow
-        });
+            BaseAddress = new Uri("https://json.schedulesdirect.org/20141201/")
+        };
+
+        mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(httpClient);
+
+        // Setup response - create new content for each call to avoid disposal issues
+        mockHttpMessageHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri != null &&
+                    req.RequestUri.ToString().EndsWith("token")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    code = 0,
+                    token = "new-token",
+                    datetime = DateTime.UtcNow
+                }), Encoding.UTF8, "application/json")
+            });
 
         // Act - Start multiple concurrent token refreshes
-        var task1 = service.RefreshTokenAsync(CancellationToken.None);
-        var task2 = service.RefreshTokenAsync(CancellationToken.None);
-        var task3 = service.RefreshTokenAsync(CancellationToken.None);
+        var tasks = Enumerable.Range(0, 5)
+            .Select(_ => service.RefreshTokenAsync(CancellationToken.None))
+            .ToArray();
 
-        await Task.WhenAll(task1, task2, task3);
+        var results = await Task.WhenAll(tasks);
 
         // Assert
+        results.ShouldAllBe(result => result == true);
+        service.GoodToken.ShouldBeTrue();
+
+        // Verify the token was set in the token store instead of checking service.Token
+        mockTokenStore.Verify(x => x.SetToken("new-token"), Times.AtLeastOnce);
+
+        // Verify that at least one token refresh was called
+        // (semaphore should prevent excessive calls, but at least one should succeed)
         mockHttpMessageHandler.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
@@ -335,7 +387,7 @@ public class HttpServiceTests
     public void Dispose_ReleasesResources()
     {
         // Arrange
-        var (service, _, _, _, _) = CreateServiceAndMocks();
+        var (service, _, _, _, _, _) = CreateServiceAndMocks();
 
         // Act
         service.Dispose();
@@ -346,15 +398,15 @@ public class HttpServiceTests
 
         // Verify that the inner exception is ObjectDisposedException
         exception.InnerException.ShouldBeOfType<ObjectDisposedException>();
-        exception.InnerException.Message.ShouldContain("HttpService");
+        exception.InnerException.Message.ShouldContain("SchedulesDirectHttpService");
     }
 
     [Fact]
     public async Task SendRequestAsync_WithValidToken_SendsRequestSuccessfully()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var expectedResponse = new { data = "test-data" };
 
@@ -385,8 +437,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithPayload_SendsPayloadCorrectly()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var payload = new { key = "value" };
         var expectedResponse = new { success = true };
@@ -429,10 +481,10 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithTokenExpired_RefreshesTokenAndRetries()
     {
         // Arrange
-        var (service, _, mockHttpClientFactory, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, _, mockHttpClientFactory, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
 
         // Set an old token timestamp to trigger refresh
-        SetTokenProperties(service, timestamp: DateTime.UtcNow.AddDays(-2));
+        SetTokenProperties(service, mockTokenStore, timestamp: DateTime.UtcNow.AddDays(-2));
 
         // Setup token refresh response
         var tokenResponse = new
@@ -484,7 +536,7 @@ public class HttpServiceTests
 
         // Assert
         result.ShouldNotBeNull();
-        service.Token.ShouldBe("refreshed-token");
+        mockTokenStore.Verify(x => x.SetToken("refreshed-token"), Times.Once);
 
         // Verify the client was created twice (once for token, once for API call)
         mockHttpClientFactory.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Exactly(2));
@@ -498,8 +550,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_UsesCorrectHttpMethod(APIMethod apiMethod, string expectedHttpMethod)
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         HttpMethod capturedMethod = null;
 
@@ -527,8 +579,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithErrorResponse_HandlesErrorCorrectly()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.BadRequest, new
         {
@@ -547,8 +599,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithTimeout_ThrowsOperationCanceledException()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         // Use a shorter timeout for testing
         var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
@@ -582,8 +634,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithHttpException_LogsAndRethrows()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         mockHttpMessageHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
@@ -601,8 +653,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithUnauthorizedResponse_ClearsTokenAndThrows()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         // First set up the token validation to succeed
         mockHttpMessageHandler.Protected()
@@ -627,7 +679,7 @@ public class HttpServiceTests
 
         // Assert
         result.ShouldBeNull();
-        service.Token.ShouldBeNull();
+        mockTokenStore.Verify(x => x.ClearToken(), Times.Once);
         service.GoodToken.ShouldBeFalse();
     }
 
@@ -635,8 +687,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithCancellation_CancelsRequest()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         var cancellationTokenSource = new CancellationTokenSource();
 
@@ -666,8 +718,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithServiceUnavailable_HandlesCorrectly()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.ServiceUnavailable, new
         {
@@ -686,8 +738,8 @@ public class HttpServiceTests
     public async Task SendRequestAsync_WithTooManyRequests_HandlesRateLimiting()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
-        SetTokenProperties(service);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks();
+        SetTokenProperties(service, mockTokenStore);
 
         SetupHttpResponse(mockHttpMessageHandler, (HttpStatusCode)429, new
         {
@@ -712,12 +764,13 @@ public class HttpServiceTests
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
         var mockApiErrorManager = new Mock<IApiErrorManager>();
+        var mockTokenStore = new Mock<ITokenStore>();
 
         var appVersion = "1.2.3.Sha.BADC0FFEE0DDF00D000000000000000000000000";
         var sdSettings = new SDSettings
         {
             SDEnabled = true,
-            TokenErrorTimestamp = DateTime.MinValue,
+            ErrorCooldowns = new List<ErrorCooldownSetting>(),
             SDUserName = "testuser",
             SDPassword = "testpass",
             UserAgent = $"StreamMaster/{appVersion}"
@@ -725,6 +778,7 @@ public class HttpServiceTests
 
         mockSDSettings.Setup(x => x.CurrentValue).Returns(sdSettings);
         mockDataRefreshService.Setup(x => x.RefreshSDReady()).Returns(Task.CompletedTask);
+        mockTokenStore.Setup(x => x.Token).Returns("test-token");
 
         // Capture the actual user agent sent in the request
         string capturedUserAgent = null;
@@ -759,10 +813,11 @@ public class HttpServiceTests
             mockLogger.Object,
             mockSDSettings.Object,
             mockDataRefreshService.Object,
-            mockApiErrorManager.Object);
+            mockApiErrorManager.Object,
+            mockTokenStore.Object);
 
         // Set token to avoid refresh
-        SetTokenProperties(service);
+        SetTokenProperties(service, mockTokenStore);
 
         // Act
         await service.SendRequestAsync<object>(APIMethod.GET, "test-endpoint");
@@ -788,7 +843,7 @@ public class HttpServiceTests
             .Setup(m => m.GetCooldownInfo(cooldownCode))
             .Returns(new ErrorCooldownInfo(DateTime.UtcNow.AddHours(1), "Service is offline"));
 
-        var (service, _, mockHttpClientFactory, _, _) = CreateServiceAndMocks(mockApiErrorManager);
+        var (service, _, mockHttpClientFactory, _, _, _) = CreateServiceAndMocks(mockApiErrorManager);
 
         // Act
         var result = await service.SendRequestAsync<object>(APIMethod.GET, "test-endpoint");
@@ -805,10 +860,10 @@ public class HttpServiceTests
     {
         // Arrange
         var mockApiErrorManager = new Mock<IApiErrorManager>();
-        var (service, settings, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+        var (service, settings, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks(mockApiErrorManager);
 
         // Setup token properties to avoid token refresh
-        SetTokenProperties(service, "valid-token", true, DateTime.UtcNow);
+        SetTokenProperties(service, mockTokenStore, "valid-token", true, DateTime.UtcNow);
 
         // Configure the mock to handle ANY call to IsInCooldown
         var cooldownCode = SDHttpResponseCode.SERVICE_OFFLINE;
@@ -860,9 +915,9 @@ public class HttpServiceTests
     {
         // Arrange
         var mockApiErrorManager = new Mock<IApiErrorManager>();
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks(mockApiErrorManager);
 
-        SetTokenProperties(service);
+        SetTokenProperties(service, mockTokenStore);
 
         SetupHttpResponse(mockHttpMessageHandler, HttpStatusCode.TooManyRequests, new
         {
@@ -888,9 +943,9 @@ public class HttpServiceTests
     {
         // Arrange
         var mockApiErrorManager = new Mock<IApiErrorManager>();
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks(mockApiErrorManager);
+        var (service, _, _, mockHttpMessageHandler, _, mockTokenStore) = CreateServiceAndMocks(mockApiErrorManager);
 
-        SetTokenProperties(service);
+        SetTokenProperties(service, mockTokenStore);
 
         var request = new HttpRequestMessage(HttpMethod.Get, "test-endpoint");
 
@@ -917,7 +972,7 @@ public class HttpServiceTests
     public async Task RefreshTokenAsync_WhenTooManyLoginsError_SetsCooldown()
     {
         // Arrange
-        var (service, _, _, mockHttpMessageHandler, _) = CreateServiceAndMocks();
+        var (service, _, _, mockHttpMessageHandler, _, _) = CreateServiceAndMocks();
 
         SetupTokenResponse(mockHttpMessageHandler, HttpStatusCode.Locked, new
         {
@@ -933,13 +988,14 @@ public class HttpServiceTests
     }
 
     [Fact]
-    public void Constructor_WithNullApiErrorManager_ThrowsArgumentNullException()
+    public void Constructor_WithNullTokenStore_ThrowsArgumentNullException()
     {
         // Arrange
         var mockLogger = new Mock<ILogger<SchedulesDirectHttpService>>();
         var mockSDSettings = new Mock<IOptionsMonitor<SDSettings>>();
         var mockDataRefreshService = new Mock<IDataRefreshService>();
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+        var mockApiErrorManager = new Mock<IApiErrorManager>();
 
         // Act & Assert
         Should.Throw<ArgumentNullException>(() => new SchedulesDirectHttpService(
@@ -947,10 +1003,11 @@ public class HttpServiceTests
             mockLogger.Object,
             mockSDSettings.Object,
             mockDataRefreshService.Object,
+            mockApiErrorManager.Object,
             null!));
     }
 
-    private (SchedulesDirectHttpService service, SDSettings settings, Mock<IHttpClientFactory> mockHttpClientFactory, Mock<HttpMessageHandler> mockHttpMessageHandler, Mock<IDataRefreshService> mockDataRefreshService)
+    private (SchedulesDirectHttpService service, SDSettings settings, Mock<IHttpClientFactory> mockHttpClientFactory, Mock<HttpMessageHandler> mockHttpMessageHandler, Mock<IDataRefreshService> mockDataRefreshService, Mock<ITokenStore> mockTokenStore)
         CreateServiceAndMocks(Mock<IApiErrorManager> mockApiErrorManager = default!)
     {
         var mockLogger = new Mock<ILogger<SchedulesDirectHttpService>>();
@@ -958,18 +1015,20 @@ public class HttpServiceTests
         var mockDataRefreshService = new Mock<IDataRefreshService>();
         var mockHttpMessageHandler = new Mock<HttpMessageHandler>(MockBehavior.Loose);
         var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+        var mockTokenStore = new Mock<ITokenStore>();
         mockApiErrorManager ??= new Mock<IApiErrorManager>();
 
         var sdSettings = new SDSettings
         {
             SDEnabled = true,
-            TokenErrorTimestamp = DateTime.MinValue,
+            ErrorCooldowns = new List<ErrorCooldownSetting>(),
             SDUserName = "testuser",
             SDPassword = "testpass"
         };
 
         mockSDSettings.Setup(x => x.CurrentValue).Returns(sdSettings);
         mockDataRefreshService.Setup(x => x.RefreshSDReady()).Returns(Task.CompletedTask);
+        mockTokenStore.Setup(x => x.Token).Returns((string?)null);
 
         var httpClient = new HttpClient(mockHttpMessageHandler.Object)
         {
@@ -983,18 +1042,18 @@ public class HttpServiceTests
             mockLogger.Object,
             mockSDSettings.Object,
             mockDataRefreshService.Object,
-            mockApiErrorManager.Object);
+            mockApiErrorManager.Object,
+            mockTokenStore.Object);
 
-        return (service, sdSettings, mockHttpClientFactory, mockHttpMessageHandler, mockDataRefreshService);
+        return (service, sdSettings, mockHttpClientFactory, mockHttpMessageHandler, mockDataRefreshService, mockTokenStore);
     }
 
-    private void SetTokenProperties(SchedulesDirectHttpService service, string token = "test-token", bool goodToken = true, DateTime? timestamp = null)
+    private void SetTokenProperties(SchedulesDirectHttpService service, Mock<ITokenStore> mockTokenStore, string token = "test-token", bool goodToken = true, DateTime? timestamp = null)
     {
-        var tokenProperty = typeof(SchedulesDirectHttpService).GetProperty("Token");
         var goodTokenProperty = typeof(SchedulesDirectHttpService).GetProperty("GoodToken");
         var tokenTimestampProperty = typeof(SchedulesDirectHttpService).GetProperty("TokenTimestamp");
 
-        tokenProperty?.SetValue(service, token);
+        mockTokenStore.Setup(x => x.Token).Returns(token);
         goodTokenProperty?.SetValue(service, goodToken);
         tokenTimestampProperty?.SetValue(service, timestamp ?? DateTime.UtcNow);
     }

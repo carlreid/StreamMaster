@@ -16,9 +16,9 @@ namespace StreamMaster.SchedulesDirect.Domain.Interfaces
 
         Task<bool> RefreshTokenAsync(CancellationToken cancellationToken);
 
-        Task<HttpResponseMessage> SendRawRequestAsync(HttpRequestMessage message, CancellationToken cancellationToken = default(CancellationToken));
+        Task<HttpResponseMessage> SendRawRequestAsync(HttpRequestMessage message, CancellationToken cancellationToken = default, bool authenticationRequired = false);
 
-        Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default, bool authenticationRequired = false);
 
         Task<bool> ValidateTokenAsync(bool forceReset = false, CancellationToken cancellationToken = default(CancellationToken));
     }

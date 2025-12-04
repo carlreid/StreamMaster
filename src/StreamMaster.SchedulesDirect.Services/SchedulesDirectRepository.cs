@@ -9,7 +9,7 @@ namespace StreamMaster.SchedulesDirect.Services;
 
 public class SchedulesDirectRepository(
         ILogger<SchedulesDirectRepository> logger,
-        ISchedulesDirectHttpService httpService,
+        ISchedulesDirectHttpService schedulesDirectHttpService,
         SMCacheManager<CountryData> CountryCache,
         SMCacheManager<Headend> HeadendCache,
         SMCacheManager<LineupPreviewChannel> LineupPreviewChannelCache,
@@ -29,7 +29,7 @@ public class SchedulesDirectRepository(
             return null;
         }
 
-        return await httpService.SendRequestAsync<Dictionary<string, GenericDescription>?>(
+        return await schedulesDirectHttpService.SendRequestAsync<Dictionary<string, GenericDescription>?>(
             APIMethod.POST,
             "metadata/description/",
             seriesIds,
@@ -46,7 +46,7 @@ public class SchedulesDirectRepository(
         try
         {
             // Fetch user status from the API
-            UserStatus? userStatus = await httpService.SendRequestAsync<UserStatus>(
+            UserStatus? userStatus = await schedulesDirectHttpService.SendRequestAsync<UserStatus>(
                 APIMethod.GET,
                 "status",
                 null,
@@ -100,7 +100,7 @@ public class SchedulesDirectRepository(
         }
 
         // Fetch data from the API if not in cache
-        Dictionary<string, List<Country>>? response = await httpService.SendRequestAsync<Dictionary<string, List<Country>>>(
+        Dictionary<string, List<Country>>? response = await schedulesDirectHttpService.SendRequestAsync<Dictionary<string, List<Country>>>(
             APIMethod.GET,
             "available/countries",
             null,
@@ -146,7 +146,7 @@ public class SchedulesDirectRepository(
         }
 
         // Fetch data from API if not in cache
-        List<Headend>? headends = await httpService.SendRequestAsync<List<Headend>>(
+        List<Headend>? headends = await schedulesDirectHttpService.SendRequestAsync<List<Headend>>(
             APIMethod.GET,
             $"headends?country={country}&postalcode={postalCode}",
             null,
@@ -188,7 +188,7 @@ public class SchedulesDirectRepository(
         }
 
         // Fetch data from API if not in cache
-        List<LineupPreviewChannel>? previewChannels = await httpService.SendRequestAsync<List<LineupPreviewChannel>>(
+        List<LineupPreviewChannel>? previewChannels = await schedulesDirectHttpService.SendRequestAsync<List<LineupPreviewChannel>>(
             APIMethod.GET,
             $"lineups/preview/{lineup}",
             null,
@@ -217,7 +217,7 @@ public class SchedulesDirectRepository(
 
     public async Task<int> AddLineupAsync(string lineup, CancellationToken cancellationToken)
     {
-        AddRemoveLineupResponse? response = await httpService.SendRequestAsync<AddRemoveLineupResponse>(
+        AddRemoveLineupResponse? response = await schedulesDirectHttpService.SendRequestAsync<AddRemoveLineupResponse>(
             APIMethod.PUT,
             $"lineups/{lineup}",
             null,
@@ -229,7 +229,7 @@ public class SchedulesDirectRepository(
 
     public async Task<int> RemoveLineupAsync(string lineup, CancellationToken cancellationToken)
     {
-        AddRemoveLineupResponse? response = await httpService.SendRequestAsync<AddRemoveLineupResponse>(
+        AddRemoveLineupResponse? response = await schedulesDirectHttpService.SendRequestAsync<AddRemoveLineupResponse>(
             APIMethod.DELETE,
             $"lineups/{lineup}",
             null,
@@ -241,7 +241,7 @@ public class SchedulesDirectRepository(
 
     public async Task<bool> UpdateHeadEndAsync(string lineup, bool subscribed, CancellationToken cancellationToken)
     {
-        AddRemoveLineupResponse? response = await httpService.SendRequestAsync<AddRemoveLineupResponse>(
+        AddRemoveLineupResponse? response = await schedulesDirectHttpService.SendRequestAsync<AddRemoveLineupResponse>(
             APIMethod.PUT,
             $"lineups/{lineup}",
             null,
@@ -263,7 +263,7 @@ public class SchedulesDirectRepository(
             return null;
         }
 
-        return await httpService.SendRequestAsync<List<ScheduleResponse>?>(
+        return await schedulesDirectHttpService.SendRequestAsync<List<ScheduleResponse>?>(
             APIMethod.POST,
             "schedules",
             requests,
@@ -283,7 +283,7 @@ public class SchedulesDirectRepository(
             return null;
         }
 
-        return await httpService.SendRequestAsync<List<Programme>?>(
+        return await schedulesDirectHttpService.SendRequestAsync<List<Programme>?>(
             APIMethod.POST,
             "programs",
             programIds,
@@ -295,7 +295,7 @@ public class SchedulesDirectRepository(
     {
         return !sdSettings.CurrentValue.SDEnabled
             ? null
-            : await httpService.SendRequestAsync<LineupResponse?>(
+            : await schedulesDirectHttpService.SendRequestAsync<LineupResponse?>(
             APIMethod.GET,
             "lineups",
             null,
@@ -316,7 +316,7 @@ public class SchedulesDirectRepository(
             return null;
         }
 
-        return await httpService.SendRequestAsync<LineupResult?>(
+        return await schedulesDirectHttpService.SendRequestAsync<LineupResult?>(
             APIMethod.GET,
             $"lineups/{lineup}",
             null,
@@ -334,7 +334,7 @@ public class SchedulesDirectRepository(
         try
         {
             HttpRequestMessage request = new(HttpMethod.Get, uri);
-            HttpResponseMessage response = await httpService.SendRawRequestAsync(request, cancellationToken);
+            HttpResponseMessage response = await schedulesDirectHttpService.SendRawRequestAsync(request, cancellationToken, authenticationRequired: true);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -397,7 +397,7 @@ public class SchedulesDirectRepository(
         //{
         //    int aaa = 1;
         //}
-        return await httpService.SendRequestAsync<List<ProgramMetadata>?>(
+        return await schedulesDirectHttpService.SendRequestAsync<List<ProgramMetadata>?>(
             APIMethod.POST,
             "metadata/programs/",
             programIds,

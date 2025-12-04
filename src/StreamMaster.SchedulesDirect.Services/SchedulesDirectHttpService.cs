@@ -15,6 +15,7 @@ namespace StreamMaster.SchedulesDirect.Services;
 /// </summary>
 public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposable
 {
+    private readonly ITokenStore _tokenStore;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SchedulesDirectHttpService> _logger;
     private readonly IOptionsMonitor<SDSettings> _sdSettings;
@@ -22,27 +23,30 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
     private readonly IApiErrorManager _apiErrorManager;
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1);
     private bool _disposed;
+    private static readonly HttpRequestOptionsKey<object?> SkipTokenAuthKey = new("SkipTokenAuth");
 
-    public string? Token { get; private set; }
+    public string? Token => _tokenStore.Token; // ✅ Fixed: Use token store
     public DateTime TokenTimestamp { get; private set; }
     public bool GoodToken { get; private set; }
-    public bool IsReady => !_disposed && _sdSettings.CurrentValue.TokenErrorTimestamp < SMDT.UtcNow;
+    public bool IsReady => !_disposed && _sdSettings.CurrentValue.ErrorCooldowns.All(errorCooldown => errorCooldown.CooldownUntil <= SMDT.UtcNow); // ✅ Fixed: <= not >
 
     public SchedulesDirectHttpService(
         IHttpClientFactory httpClientFactory,
         ILogger<SchedulesDirectHttpService> logger,
         IOptionsMonitor<SDSettings> sdSettings,
         IDataRefreshService dataRefreshService,
-        IApiErrorManager apiErrorManager)
+        IApiErrorManager apiErrorManager,
+        ITokenStore tokenStore)
     {
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sdSettings = sdSettings ?? throw new ArgumentNullException(nameof(sdSettings));
         _dataRefreshService = dataRefreshService ?? throw new ArgumentNullException(nameof(dataRefreshService));
         _apiErrorManager = apiErrorManager ?? throw new ArgumentNullException(nameof(apiErrorManager));
+        _tokenStore = tokenStore ?? throw new ArgumentNullException(nameof(tokenStore));
     }
 
-    public async Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default)
+    public async Task<T?> SendRequestAsync<T>(APIMethod method, string endpoint, object? payload = null, CancellationToken cancellationToken = default, bool authenticationRequired = false)
     {
         if (_disposed)
         {
@@ -85,7 +89,7 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
                     "application/json");
             }
 
-            using var httpClient = GetHttpClient();
+            var httpClient = GetHttpClient(authenticationRequired);
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
@@ -115,7 +119,7 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
         }
     }
 
-    public async Task<HttpResponseMessage> SendRawRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
+    public async Task<HttpResponseMessage> SendRawRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default, bool authenticationRequired = false)
     {
         if (_disposed)
         {
@@ -148,11 +152,12 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
 
         try
         {
-            using var httpClient = GetHttpClient();
-            var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var httpClient = GetHttpClient(authenticationRequired);
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-            var clonedRequest = CloneHttpRequest(request);
+            var clonedRequest = await CloneHttpRequestAsync(request);
+
             HttpResponseMessage response = await httpClient
                 .SendAsync(clonedRequest, HttpCompletionOption.ResponseHeadersRead, linkedCts.Token)
                 .ConfigureAwait(false);
@@ -247,6 +252,13 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
                         break;
 
                     case SDHttpResponseCode.TOKEN_MISSING:
+                        // In case of a request being made where no token is added, ensure we don't block ourselves.
+                        _apiErrorManager.SetCooldown(sdCode, SMDT.UtcNow.AddMinutes(10), "A request was made to SchedulesDirect without a token.");
+                        response.StatusCode = HttpStatusCode.Unauthorized;
+                        response.ReasonPhrase = "Unauthorized";
+                        ClearToken();
+                        break;
+
                     case SDHttpResponseCode.TOKEN_INVALID:
                     case SDHttpResponseCode.INVALID_USER:
                     case SDHttpResponseCode.TOKEN_EXPIRED:
@@ -338,28 +350,31 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
             }
             ClearToken();
 
-            using var httpClient = GetHttpClient();
+            // We are performing an authentication request, so authentication isn't required
+            var httpClient = GetHttpClient(authenticationRequired: false);
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-            using var response = await httpClient.PostAsJsonAsync(
-                "token",
-                new { username, password },
-                linkedCts.Token
-            ).ConfigureAwait(false);
+            var requestPayload = JsonSerializer.Serialize(new { username, password });
+            using var request = new HttpRequestMessage(HttpMethod.Post, "token")
+            {
+                Content = new StringContent(requestPayload, Encoding.UTF8, "application/json")
+            };
+            request.Options.Set(SkipTokenAuthKey, true);
+
+            using var response = await httpClient.SendAsync(request, linkedCts.Token).ConfigureAwait(false);
 
             TokenResponse? tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>(cancellationToken: linkedCts.Token);
             if (response.IsSuccessStatusCode)
             {
                 if (tokenResponse?.Code == 0 && !string.IsNullOrEmpty(tokenResponse.Token))
                 {
-                    Token = tokenResponse.Token;
-                    TokenTimestamp = tokenResponse.Datetime;
-                    GoodToken = true;
+                    SetToken(tokenResponse.Token, tokenResponse.Datetime);
 
                     _logger.LogInformation("Token refreshed successfully. Token={Token}...",
                         Token?[..Math.Min(5, Token.Length)]);
                     _sdSettings.CurrentValue.TokenErrorTimestamp = DateTime.MinValue;
+                    //TODO: Clean up any login related error timeout
                     SettingsHelper.UpdateSetting(_sdSettings.CurrentValue);
                     await _dataRefreshService.RefreshSDReady().ConfigureAwait(false);
                     return true;
@@ -432,47 +447,67 @@ public class SchedulesDirectHttpService : ISchedulesDirectHttpService, IDisposab
 
     public void ClearToken()
     {
-        Token = null;
+        _tokenStore.ClearToken();
         GoodToken = false;
         TokenTimestamp = DateTime.MinValue;
         _logger.LogWarning("Token cleared.");
     }
 
-    private HttpClient GetHttpClient()
+    private void SetToken(string token, DateTime timestamp)
+    {
+        _tokenStore.SetToken(token);
+        TokenTimestamp = timestamp;
+        GoodToken = true;
+    }
+
+    private HttpClient GetHttpClient(bool authenticationRequired = false)
     {
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(SchedulesDirectHttpService));
         }
 
-        var httpClient = _httpClientFactory.CreateClient(nameof(SchedulesDirectHttpService));
-
-        if (!string.IsNullOrEmpty(Token))
+        if (authenticationRequired && string.IsNullOrEmpty(Token))
         {
-            httpClient.DefaultRequestHeaders.Remove("token");
-            httpClient.DefaultRequestHeaders.Add("token", Token);
+            throw new UnauthorizedAccessException("Auth token is found as empty, but caller expects authentication to be made.");
         }
+
+        var httpClient = _httpClientFactory.CreateClient(nameof(SchedulesDirectHttpService));
 
         httpClient.DefaultRequestHeaders.UserAgent.Clear();
         string userAgent = _sdSettings.CurrentValue.UserAgent ?? "StreamMaster/1.0";
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
 
-        httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-        return httpClient;
+        return httpClient; // ✅ Fixed: Don't set timeout on factory-created client
     }
 
-    private static HttpRequestMessage CloneHttpRequest(HttpRequestMessage request)
+    private static async Task<HttpRequestMessage> CloneHttpRequestAsync(HttpRequestMessage request)
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri)
         {
-            Content = request.Content,
             Version = request.Version
         };
+
+        if (request.Content != null)
+        {
+            var contentBytes = await request.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+            clone.Content = new ByteArrayContent(contentBytes);
+
+            // Copy content headers
+            foreach (var header in request.Content.Headers)
+            {
+                clone.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
 
         foreach (var header in request.Headers)
         {
             clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        foreach (var option in request.Options)
+        {
+            clone.Options.Set(new HttpRequestOptionsKey<object?>(option.Key), option.Value);
         }
 
         return clone;
