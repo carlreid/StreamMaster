@@ -79,6 +79,7 @@ public sealed class FileUtil
     {
         return IsValidFilePath(filePath) && File.Exists(filePath);
     }
+
     /// <summary>
     /// Searches for the specified executable name in predefined directories.
     /// </summary>
@@ -114,6 +115,43 @@ public sealed class FileUtil
             {
                 return execPath + ".exe";
             }
+        }
+
+        // If nothing found, attempt to use .NET Process to locate the executable.
+        try
+        {
+            using Process process = new();
+
+            // Set up process to just get the path without actually running the program
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                process.StartInfo.FileName = "where";
+                process.StartInfo.Arguments = executableName;
+            }
+            else
+            {
+                process.StartInfo.FileName = "which";
+                process.StartInfo.Arguments = executableName;
+            }
+
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+
+            if (process.Start())
+            {
+                string? output = process.StandardOutput.ReadLine();
+                process.WaitForExit();
+
+                if (!string.IsNullOrEmpty(output) && File.Exists(output))
+                {
+                    return output;
+                }
+            }
+        }
+        catch
+        {
+            // Silently fail if the process approach doesn't work
         }
 
         return null;
